@@ -23,7 +23,7 @@ Remove the .example suffix from the following files:
 <b>Set up Spotify App:</b>
 
 - Go to https://developer.spotify.com/dashboard and create a new app.<br>
-- Set the Redirect URI to: http://localhost:8080.<br>
+- Set the Redirect URI to: `http://localhost:8080`.<br>
 - Select Web API and Web Playback SDK.<br>
 - In your app settings, copy the Client ID and Client Secret, and paste them into your .env file.<br>
 
