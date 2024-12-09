@@ -43,7 +43,7 @@ PROCNAME = "spotify"
 
 def timestamped_print(message):
     current_time = datetime.now().isoformat(sep=" ", timespec="seconds")
-    print(f"{current_time} {message} | ")
+    print(f"{current_time} | {message}")
     
 def killswitch():
     if KILLSWITCH_ON=='true':
