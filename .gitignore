@@ -1,3 +1,4 @@
 .env
 .cache
 schedule.txt
+output_log.txt

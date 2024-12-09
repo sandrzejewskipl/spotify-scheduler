@@ -6,6 +6,28 @@ from datetime import datetime, time
 from dotenv import load_dotenv
 import os
 import time as t
+import psutil
+import sys
+
+# Otwórz plik do zapisu
+log_file = open("output_log.txt", "a", encoding="utf-8")
+
+# Przekierowanie stdout na konsolę i do pliku
+class Logger:
+    def __init__(self, file, terminal):
+        self.file = file
+        self.terminal = terminal
+
+    def write(self, message):
+        self.file.write(message)
+        self.terminal.write(message)
+        self.flush()  # Wymuszenie zapisu
+
+    def flush(self):
+        self.file.flush()
+        self.terminal.flush()
+
+sys.stdout = Logger(log_file, sys.__stdout__)
 
 # Ładowanie danych z pliku .env
 load_dotenv()
@@ -16,6 +38,20 @@ PLAYLIST_ID = os.getenv("PLAYLIST_ID")
 DEVICE_NAME = os.getenv("DEVICE_NAME")
 REDIRECT_URI = "http://localhost:8080"
 SCOPE = "user-modify-playback-state user-read-playback-state"
+PROCNAME = "spotify"
+
+def timestamped_print(message):
+    current_time = datetime.now().isoformat(sep=" ", timespec="seconds")
+    print(f"{current_time} {message} | ")
+    
+def killswitch():
+    if KILLSWITCH_ON=='true':
+        for proc in psutil.process_iter():
+            # check whether the process name matches
+            if PROCNAME.lower() in proc.name().lower():
+                proc.kill()
+                timestamped_print("Proces spotify został zabity ze względu na brak kontroli.")
+
 
 # Inicjalizacja Spotipy
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=CLIENT_ID,
@@ -95,9 +131,11 @@ def pause_music():
 
 # Główna pętla programu
 def main():
+    print(f"# Spotify scheduler made by Szymon Andrzejewski (https://szymonandrzejewski.pl)\n# Github repository: https://github.com/sandrzejewskipl/spotify-scheduler/\n\nSprawdź poniższy harmonogram na dziś i dostosuj go w razie potrzeby. Skrypt zostanie uruchomiony za 5 sekund.\n")
     with open('schedule.txt', 'r') as file:
         content = file.read() 
         print(content)
+    t.sleep(5)      
 
     while True:
         if is_within_schedule():
