@@ -37,6 +37,7 @@ CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 PLAYLIST_ID = os.getenv("PLAYLIST_ID")
 DEVICE_NAME = os.getenv("DEVICE_NAME")
 KILLSWITCH_ON = os.getenv("KILLSWITCH")
+WEEKDAYS_ONLY = os.getenv("WEEKDAYS_ONLY")
 REDIRECT_URI = "http://localhost:8080"
 SCOPE = "user-modify-playback-state user-read-playback-state"
 PROCNAME = "spotify"
@@ -73,7 +74,10 @@ def is_within_schedule(schedule_file="schedule.txt"):
                 start_time = datetime.strptime(start_str, "%H:%M").time()
                 end_time = datetime.strptime(end_str, "%H:%M").time()
                 if start_time <= now <= end_time:
-                    return True
+                    weekno = datetime.today().weekday()
+                    if WEEKDAYS_ONLY=='false': weekno=0
+                    if weekno < 5:
+                        return True
     except FileNotFoundError:
         timestamped_print("Plik z harmonogramem nie istnieje.")
     except Exception as e:
@@ -106,13 +110,8 @@ def play_music():
         else:
             timestamped_print(f"Nie znaleziono urządzenia z nazwą zawierającą {DEVICE_NAME}.")
         
-    except spotipy.exceptions.SpotifyException as e:
-        timestamped_print(f"Błąd podczas odtwarzania muzyki: {e}")
-        print(f"Status kod błędu: {e.status}")
-        print(f"Treść błędu: {e}")
-        killswitch()
     except Exception as ex:
-        timestamped_print(f"Nieoczekiwany błąd podczas odtwarzania: {ex}")
+        timestamped_print(f"Błąd podczas odtwarzania: {ex}")
         killswitch()
 
 
@@ -126,14 +125,9 @@ def pause_music():
             sp.pause_playback()
             timestamped_print("Muzyka zatrzymana.")
         else:
-            timestamped_print("Muzyka już jest zatrzymana.")
-    except spotipy.exceptions.SpotifyException as e:
-        timestamped_print(f"Błąd podczas pauzowania muzyki: {e}")
-        print(f"Status kod błędu: {e.status}")
-        print(f"Treść błędu: {e}")
-        killswitch()        
+            timestamped_print("Muzyka już jest zatrzymana.")    
     except Exception as e:
-        timestamped_print(f"Nieoczekiwany błąd podczas pauzowania muzyki: {e}")
+        timestamped_print(f"Błąd podczas pauzowania muzyki: {e}")
         killswitch()
 
 # Główna pętla programu
@@ -155,12 +149,8 @@ def main():
                 else:
                     timestamped_print("Muzyka jest aktualnie odtwarzana.")
                     
-            except (spotipy.exceptions.SpotifyException) as e:
-                timestamped_print(f"Błąd podczas pobierania stanu odtwarzania: {e}")
-                killswitch()
-
             except Exception as ex:
-                timestamped_print(f"Nieoczekiwany błąd: {ex}")
+                timestamped_print(f"Błąd podczas pobierania stanu odtwarzania: {ex}")
                 killswitch()
                 
 
