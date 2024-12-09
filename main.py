@@ -6,6 +6,7 @@ from datetime import datetime, time
 from dotenv import load_dotenv
 import os
 import time as t
+import psutil
 
 # Ładowanie danych z pliku .env
 load_dotenv()
@@ -14,8 +15,23 @@ CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 PLAYLIST_ID = os.getenv("PLAYLIST_ID")
 DEVICE_NAME = os.getenv("DEVICE_NAME")
+KILLSWITCH_ON = os.getenv("KILLSWITCH")
 REDIRECT_URI = "http://localhost:8080"
 SCOPE = "user-modify-playback-state user-read-playback-state"
+PROCNAME = "spotify"
+
+def timestamped_print(message):
+    current_time = datetime.now().strftime("[%H:%M:%S]")
+    print(f"{current_time} {message}")
+    
+def killswitch():
+    if KILLSWITCH_ON=='true':
+        for proc in psutil.process_iter():
+            # check whether the process name matches
+            if PROCNAME.lower() in proc.name().lower():
+                proc.kill()
+                timestamped_print("Proces spotify został zabity ze względu na brak kontroli.")
+
 
 # Inicjalizacja Spotipy
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=CLIENT_ID,
@@ -23,9 +39,7 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=CLIENT_ID,
                                                redirect_uri=REDIRECT_URI,
                                                scope=SCOPE))
 
-def timestamped_print(message):
-    current_time = datetime.now().strftime("[%H:%M:%S]")
-    print(f"{current_time} {message}")
+
     
 # Funkcja sprawdzająca, czy obecny czas mieści się w przedziałach
 def is_within_schedule(schedule_file="schedule.txt"):
@@ -69,14 +83,16 @@ def play_music():
             sp.start_playback(device_id=target_device, context_uri=f"spotify:playlist:{PLAYLIST_ID}")
             timestamped_print(f"Muzyka odtwarzana na urządzeniu {target_device}.")
         else:
-            timestamped_print("Nie znaleziono urządzenia z nazwą zawierającą 'DEVICE'.")
+            timestamped_print(f"Nie znaleziono urządzenia z nazwą zawierającą {DEVICE_NAME}.")
         
     except spotipy.exceptions.SpotifyException as e:
         timestamped_print(f"Błąd podczas odtwarzania muzyki: {e}")
         print(f"Status kod błędu: {e.status}")
         print(f"Treść błędu: {e}")
+        killswitch()
     except Exception as ex:
         timestamped_print(f"Nieoczekiwany błąd podczas odtwarzania: {ex}")
+        killswitch()
 
 
 # Funkcja pauzująca muzykę
@@ -84,6 +100,7 @@ def pause_music():
     try:
         # Pobierz aktualny stan odtwarzacza
         current_playback = sp.current_playback()
+        
         if current_playback and current_playback['is_playing']:
             sp.pause_playback()
             timestamped_print("Muzyka zatrzymana.")
@@ -91,22 +108,40 @@ def pause_music():
             timestamped_print("Muzyka już jest zatrzymana.")
     except spotipy.exceptions.SpotifyException as e:
         timestamped_print(f"Błąd podczas pauzowania muzyki: {e}")
-
+        print(f"Status kod błędu: {e.status}")
+        print(f"Treść błędu: {e}")
+        killswitch()        
+    except Exception as e:
+        timestamped_print(f"Nieoczekiwany błąd podczas pauzowania muzyki: {e}")
+        killswitch()
 
 # Główna pętla programu
 def main():
+    print("!!! Sprawdź poniższy harmonogram na dziś i dostosuj go w razie potrzeby. !!!")
     with open('schedule.txt', 'r') as file:
         content = file.read() 
         print(content)
-
+           
     while True:
         if is_within_schedule():
             timestamped_print("Obecny czas jest w harmonogramie. Sprawdzanie odtwarzania...")
-            current_playback = sp.current_playback()
-            if not current_playback or not current_playback['is_playing']:
-                play_music()
-            else:
-                timestamped_print("Muzyka jest aktualnie odtwarzana.")
+            try:
+                current_playback = sp.current_playback()
+                
+                if not current_playback or not current_playback['is_playing']:
+                    play_music()
+                else:
+                    timestamped_print("Muzyka jest aktualnie odtwarzana.")
+                    
+            except (spotipy.exceptions.SpotifyException) as e:
+                timestamped_print(f"Błąd podczas pobierania stanu odtwarzania: {e}")
+                killswitch()
+
+            except Exception as ex:
+                timestamped_print(f"Nieoczekiwany błąd: {ex}")
+                killswitch()
+                
+
         else:
             timestamped_print("Obecny czas poza harmonogramem. Pauzowanie...")
             pause_music()

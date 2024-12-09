@@ -1,23 +1,43 @@
 # Spotify Scheduler
-This python script allows to schedule playing spotify playlist at time range specifed in `schedule.txt` (e.g. 8:00-8:15)
+This Python script allows you to schedule playing a Spotify playlist within a specified time range in `schedule.txt` (e.g., 8:00-8:15).
+
+It was created as a school project, so it contains some Polish log messages. The script features a Killswitch, which terminates Spotify processes if there is an issue with stopping the music, ensuring that music does not play outside the scheduled timeframe.
 
 ## Usage
-Clone this repository (`git clone https://github.com/sandrzejewskipl/spotify-scheduler.git`) <br>
+<b>Clone the repository</b>
 
-Make sure you got python installed. Download requirements by typing `pip install -r requirements.txt`<br>
+`git clone https://github.com/sandrzejewskipl/spotify-scheduler.git`<br>
 
-Remove `.example` from file names of `.env.example` and `schedule.txt.example`
+<b>Install dependencies:</b><br>
+Make sure you have Python installed. Then, download the required packages by running:
 
-Next, go to https://developer.spotify.com/dashboard and create an app. Set redirect URI to `http://localhost:8080` and select Web API and Web Playback SDK. Then, go to your app settings and copy Client ID and Client secret and paste them in .env file.
+`pip install -r requirements.txt`<br>
 
-### .env
+<b>Configure environment files:</b><br>
+Remove the .example suffix from the following files:
+
+`.env.example` → `.env`
+
+`schedule.txt.example` → `schedule.txt`
+
+<b>Set up Spotify App:</b>
+
+- Go to https://developer.spotify.com/dashboard and create a new app.<br>
+- Set the Redirect URI to: http://localhost:8080.<br>
+- Select Web API and Web Playback SDK.<br>
+- In your app settings, copy the Client ID and Client Secret, and paste them into your .env file.<br>
+
+
+### .env Configuration
 ```
 CLIENT_ID=your_client_id # Replace with your client id  
 CLIENT_SECRET=your_client_secret # Replace with your client secret
 PLAYLIST_ID=your_playlist_id # Replace with your playlist ID that will be played
-DEVICE_NAME=DESKTOP # Replace with spotify device name (if you don't know, you can run script without changing it and it will print devices connected to your account)
+DEVICE_NAME=DESKTOP # Replace with your Spotify device name (if unsure, run the script to display connected devices)
+KILLSWITCH=true # true or false - If the script can't pause music (e.g., due to losing internet access), it will kill Spotify to prevent playback outside the schedule
 ```
-Modify your schedule file `schedule.txt`, example below
+
+Modify your schedule file `schedule.txt`, example below.
 ```
 8:45-8:55
 9:40-9:45
@@ -26,7 +46,6 @@ Modify your schedule file `schedule.txt`, example below
 12:20-12:25
 13:10-13:25
 14:10-14:15
-16:12-16:38
 ```
 
 
@@ -34,4 +53,6 @@ Modify your schedule file `schedule.txt`, example below
 ## Run
 `python main.py`
 
-On first run, OAuth from spotify should pop up.
+- On the first run, an OAuth window for Spotify should appear.
+- There is no need to restart the script when changing the schedule.
+- However, you must rerun the script if you modify the .env file.
