@@ -1,5 +1,5 @@
 # Spotify Scheduler
-This Python script allows you to schedule playing a Spotify playlist within a specified time range in `schedule.txt` (e.g., 8:00-8:15).
+This Python script allows you to schedule playing a Spotify playlist within a specified time range in a file (e.g. 8:00-8:15).
 
 It was created as a school project, so it contains some Polish log messages. The script features a Killswitch, which terminates Spotify processes if there is an issue with stopping the music, ensuring that music does not play outside the scheduled timeframe.
 
