@@ -141,7 +141,7 @@ def main():
     print(f"# Spotify scheduler made by Szymon Andrzejewski (https://szymonandrzejewski.pl)\n# Github repository: https://github.com/sandrzejewskipl/spotify-scheduler/\n\nSprawdź poniższy harmonogram na dziś i dostosuj go w razie potrzeby. Skrypt zostanie uruchomiony za 5 sekund.\n")
     with open('schedule.txt', 'r') as file:
         content = file.read() 
-        print(content)
+        print(f'{content}\n')
     t.sleep(5)      
 
     while True:
