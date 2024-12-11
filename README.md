@@ -7,7 +7,9 @@ This Python script application with GUI allows you to schedule a Spotify playlis
 
 ![Now playing tab](img/now_playing.png)
 
+#
 Easily plan and schedule music for any time of day! Modify your schedule, choose a playlist from the user's playlist library, or directly add a playlist using its ID or link. Perfect for managing music playback effortlessly, whether you're creating a radio station for your school to play music during breaks or events, setting up a music schedule for your workplace, or planning playlists for specific times at venues.
+#
 
 ![Schedule](img/schedule.png)
 ![Playlist](img/playlist.png)
