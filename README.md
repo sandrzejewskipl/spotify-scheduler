@@ -39,7 +39,7 @@ On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify
 - English (en)
 - Polish (pl)
 
-<b>DEVICE NAME</b> - name (or part of it) of the device in Spotify API that will play music. It defaults to "DESKTOP", because default windows computer system name starts with "DESKTOP-" and Spotify sets device name of Windows app to computer name.
+<b>DEVICE NAME</b> - name (or part of it) of the device in Spotify API that will play music. It defaults to "DESKTOP", because default windows computer name starts with "DESKTOP-" and Spotify sets device name of Windows app to it.
 
 <b>Killswitch</b> - feature that kills the Spotify process(es) when an error with API occurs. It prevents playback when it shouldn't be played but API call somehow didn't worked.
 
