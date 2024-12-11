@@ -19,10 +19,13 @@ import platform
 from translations import translations
 import os
 
-version="1.2.0"
+version="1.2.1"
 config_file="config.json"
 schedule_file="schedule.txt"
 log_file="output.log"
+
+current_pid = os.getpid()
+parent_pid = psutil.Process(current_pid).parent().pid
 
 # Check if the folder exists, if not, create it
 if not os.path.exists("spotify-scheduler_data"):
@@ -73,7 +76,7 @@ LANG = config['LANG']
 
 REDIRECT_URI = "http://localhost:8080"
 SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private"
-PROCNAME = "spotify"
+PROCNAME = "spotify.exe"
 
 def _(key, **kwargs):
     global LANG
@@ -657,7 +660,8 @@ def checklist():
 
         for proc in psutil.process_iter():
             if PROCNAME.lower() in proc.name().lower():
-                proces = _("Spotify Running")
+                if (proc.pid!=current_pid) or (proc.pid!=parent_pid):
+                    proces = _("Spotify Running")
 
         checklistvar.set(_("Checklist", process=proces, device=found_device, volume=volume, playlist=playlist))
 
@@ -766,9 +770,10 @@ def killswitch():
     if KILLSWITCH_ON:
         for proc in psutil.process_iter():
             if PROCNAME.lower() in proc.name().lower():
-                proc.kill()
-                timestamped_print("Spotify application process was killed.")
-                status.set(_("Spotify application process was killed"))
+                if (proc.pid!=current_pid) or (proc.pid!=parent_pid):
+                    proc.kill()
+                    timestamped_print("Killed Spotify process")
+                    status.set(_("Killed Spotify process"))
 
 last_schedule=''
 def is_within_schedule(schedule_file=schedule_file):
@@ -867,7 +872,6 @@ def main():
             content = file.read() 
             print(f'{content}\n')
     except FileNotFoundError:
-        timestamped_print(f"Setting schedule to default.")
         replace_schedule_with_default()
         with open(schedule_file, 'r') as file:
             content = file.read() 

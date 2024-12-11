@@ -59,7 +59,7 @@ translations = {
         "no_playing_playlist": "Nie odtwarzasz teraz playlisty.",
         "no_playlist_name": "Nie udało się pobrać nazwy playlisty.",
         "no_playback": "Nic nie jest teraz odtwarzane.",
-        "Spotify application process was killed": "Proces aplikacji Spotify został zabity",
+        "Killed Spotify process": "Zabito proces Spotify",
         "no_active_devices": "Brak aktywnych urządzeń Spotify.",
         "Playback has been paused.": "Odtwarzanie zostało wstrzymane.",
         "check_schedule": "Sprawdź poniższy harmonogram na dziś i dostosuj go w razie potrzeby. Skrypt zostanie uruchomiony za 5 sekund.\n",
