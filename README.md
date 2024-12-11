@@ -7,14 +7,16 @@ This Python script application with GUI allows you to schedule a Spotify playlis
 
 ![Now playing tab](img/now_playing.png)
 
-You can modify schedule, select playlist from user's playlist list or manually put ID or link to it.
+Easily plan and schedule music for any time of day! Modify your schedule, choose a playlist from the user's playlist library, or directly add a playlist using its ID or link. Perfect for managing music playback effortlessly, whether you're creating a radio station for your school to play music during breaks or events, setting up a music schedule for your workplace, or planning playlists for specific times at venues.
 
 ![Schedule](img/schedule.png)
 ![Playlist](img/playlist.png)
 
 
 ## Running on Windows
-Download latest release from <a href="https://github.com/sandrzejewskipl/spotify-scheduler/releases">here</a> and run the downloaded `.exe` file. A `spotify-scheduler_data` folder will be automatically created. This folder contains configuration files and needs to remain in the same directory as your .exe.
+Download an `.exe` file from the latest release <a href="https://github.com/sandrzejewskipl/spotify-scheduler/releases">here</a>. 
+
+A `spotify-scheduler_data` folder will be automatically created. This folder contains configuration files and needs to remain in the same directory as your .exe.
 
 On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify in a console. Then OAuth popup should open. You <b>need</b> to keep the console running; otherwise, closing it will cause the program to stop.
 ## Running on Linux or MacOS
