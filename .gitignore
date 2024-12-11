@@ -1,4 +1,6 @@
 .env
 .cache
 schedule.txt
+config.json
 output_log.txt
+__pycache__/
