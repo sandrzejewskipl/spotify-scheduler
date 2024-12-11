@@ -44,7 +44,7 @@ translations = {
         "Owner": "Autor",
         "Image not found": "Nie znaleziono obrazka",
         "Device Not Found": "❌ Urządzenie: NIE ZNALEZIONO",
-        "Check Manually": "❔ SPRAWDŹ RĘCZNIE",
+        "Check Manually": "❔ Głośność: SPRAWDŹ RĘCZNIE",
         "Spotify Is Turned Off": "❌ Spotify jest wyłączony",
         "Device Found": "✅ Urządzenie: ZNALEZIONO ({device_name})",
         "Volume OK": "✅ Głośność: OK ({volume}%)",
@@ -65,7 +65,8 @@ translations = {
         "check_schedule": "Sprawdź poniższy harmonogram na dziś i dostosuj go w razie potrzeby. Skrypt zostanie uruchomiony za 5 sekund.\n",
         "out_of_schedule": "Czas poza harmonogramem. Odtwarzanie nie zostało zatrzymane.",
         "Language": "Język",
-        "Detected devices": "Wykryte urządzenia"
+        "Detected devices": "Wykryte urządzenia",
+        "Playlist not set": "Playlista nie ustawiona"
 
 
 
@@ -84,7 +85,7 @@ translations = {
         "START_LABEL": "Start Time (HH:MM)",
         "END_LABEL": "End Time (HH:MM)",
         "Device Not Found": "❌ Device: NOT FOUND",
-        "Check Manually": "❔ CHECK MANUALLY",
+        "Check Manually": "❔ Volume: CHECK MANUALLY",
         "Spotify Is Turned Off": "❌ Spotify is turned off",
         "Device Found": "✅ Device: FOUND ({device_name})",
         "Volume OK": "✅ Volume: OK ({volume}%)",

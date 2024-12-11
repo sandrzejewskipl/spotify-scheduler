@@ -1,3 +1,7 @@
+<p align="center">
+<img src="icon.ico" width='150'>
+</p>
+
 # Spotify Scheduler
 This Python script application with GUI allows you to schedule a Spotify playlist to play at specific times (e.g. 8:00-8:15).
 
@@ -9,7 +13,11 @@ You can modify schedule, select playlist from user's playlist list or manually p
 ![Playlist](img/playlist.png)
 
 
-## Installation
+## Running on Windows
+Download latest release from <a href="https://github.com/sandrzejewskipl/spotify-scheduler/releases">here</a> and run the downloaded `.exe` file. A `spotify-scheduler_data` folder will be automatically created. This folder contains configuration files and needs to remain in the same directory as your .exe.
+
+On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify in a console. Then OAuth popup should open. You <b>need</b> to keep the console running; otherwise, closing it will cause the program to stop.
+## Running on Linux or MacOS
 <b>Clone the repository (by the command below, or download it)</b>
 
 `git clone https://github.com/sandrzejewskipl/spotify-scheduler.git`<br>
@@ -25,15 +33,15 @@ Make sure you have Python installed. Then, download the required packages by run
 - Set the Redirect URI to: `http://localhost:8080`.<br>
 - Select Web API and Web Playback SDK.<br>
 
-
-## Run
 Run this command from the command line in the same directory.<br>
 `python main.py`
 
 On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify. Then OAuth popup should open.
 
-## Settings tab
+## Settings
 ![Settings](img/settings.png)
+
+You can fully configure your settings and set your schedule using the GUI. If you are unable to display the GUI, you can customize the files in the `spotify-scheduler_data` folder and restart the app to apply the changes.
 
 ### Supported languages:
 - English (en)
