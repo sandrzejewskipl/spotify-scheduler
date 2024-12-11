@@ -36,8 +36,9 @@ On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify
 ![Settings](img/settings.png)
 
 ### Supported languages:
-- Polish (pl)
 - English (en)
+- Polish (pl)
+
 
 <b>Killswitch</b> - feature that kills the Spotify process(es) when an error with API occurs. It prevents playback when it shouldn't be played but API call somehow didn't worked.
 
