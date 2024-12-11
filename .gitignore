@@ -5,7 +5,7 @@ config.json
 output_log.txt
 __pycache__/
 output/
-spotify-scheduler_config/
+spotify-scheduler_data/
 build/
 dist/
 *.spec
