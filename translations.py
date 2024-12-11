@@ -64,6 +64,8 @@ translations = {
         "Playback has been paused.": "Odtwarzanie zostało wstrzymane.",
         "check_schedule": "Sprawdź poniższy harmonogram na dziś i dostosuj go w razie potrzeby. Skrypt zostanie uruchomiony za 5 sekund.\n",
         "out_of_schedule": "Czas poza harmonogramem. Odtwarzanie nie zostało zatrzymane.",
+        "Language": "Język",
+        "Detected devices": "Wykryte urządzenia"
 
 
 

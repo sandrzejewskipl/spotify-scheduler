@@ -18,7 +18,7 @@ import subprocess
 import platform
 from translations import translations
 
-version="1.0.0"
+version="1.1.0"
 
 def load_config(config_file="config.json"):
     try:
@@ -166,7 +166,7 @@ setting_entries = {}
 setting_vars = {}
 
 # Language selection 
-ttk.Label(settings_frame, text="Język:").grid(row=0, column=0, padx=10, pady=5, sticky=tk.E)
+ttk.Label(settings_frame, text=_("Language")).grid(row=0, column=0, padx=10, pady=5, sticky=tk.E)
 language_var = tk.StringVar(value=config.get('LANG', 'en'))
 
 language_combobox = ttk.Combobox(settings_frame, textvariable=language_var, state="readonly", width=47)
@@ -174,17 +174,17 @@ language_combobox['values'] = ('en', 'pl')
 language_combobox.grid(row=0, column=1, padx=10, pady=5)
 
 # CLIENT ID
-ttk.Label(settings_frame, text="CLIENT ID:").grid(row=1, column=0, padx=10, pady=5, sticky=tk.E)
+ttk.Label(settings_frame, text="CLIENT ID").grid(row=1, column=0, padx=10, pady=5, sticky=tk.E)
 setting_entries['CLIENT_ID'] = ttk.Entry(settings_frame, width=50)
 setting_entries['CLIENT_ID'].grid(row=1, column=1, padx=10, pady=5)
 
 # CLIENT SECRET
-ttk.Label(settings_frame, text="CLIENT SECRET:").grid(row=2, column=0, padx=10, pady=5, sticky=tk.E)
+ttk.Label(settings_frame, text="CLIENT SECRET").grid(row=2, column=0, padx=10, pady=5, sticky=tk.E)
 setting_entries['CLIENT_SECRET'] = ttk.Entry(settings_frame, show="*", width=50)
 setting_entries['CLIENT_SECRET'].grid(row=2, column=1, padx=10, pady=5)
 
 # DEVICE NAME
-ttk.Label(settings_frame, text="DEVICE NAME:").grid(row=3, column=0, padx=10, pady=5, sticky=tk.E)
+ttk.Label(settings_frame, text="DEVICE NAME").grid(row=3, column=0, padx=10, pady=5, sticky=tk.E)
 setting_entries['DEVICE_NAME'] = ttk.Entry(settings_frame, width=50)
 setting_entries['DEVICE_NAME'].grid(row=3, column=1, padx=10, pady=5)
 
@@ -200,6 +200,13 @@ save_btn.grid(row=6, columnspan=2, pady=20)
 
 text_label = ttk.Label(settings_frame, text="EN: After changing the language, restart the application to apply the changes. \nPL: Po zmianie języka zrestartuj aplikację, aby zastosować zmiany.", foreground="green")
 text_label.grid(row=7, columnspan=2, pady=10)
+
+devices_list = tk.StringVar()
+devices_list.set("")
+
+devices_label = ttk.Label(settings_frame, textvariable=devices_list, wraplength=500, anchor="w")
+devices_label.place(x=10, y=300)
+
 
 
 log_file = open("output_log.txt", "a", encoding="utf-8")
@@ -634,11 +641,16 @@ def update_now_playing_info():
 
         # Get active device
         target_device_name = _("No device")
+        device_list=''
         if devices and "devices" in devices:
             for device in devices["devices"]:
+                name = device.get("name", _("Unknown device"))
+                device_list+=(f"{name}; ")
                 if device.get("is_active"):
-                    target_device_name = device.get("name", _("Unknown device"))
+                    target_device_name = name
                     break
+        devices_string=f"{_('Detected devices')}:\n{device_list}"
+        devices_list.set(devices_string)
 
         if current_playback and "item" in current_playback and current_playback["item"]:
             track = current_playback["item"]
