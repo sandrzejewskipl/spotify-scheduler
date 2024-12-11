@@ -1,3 +1,4 @@
 spotipy
 python-dotenv
 psutil
+pillow
