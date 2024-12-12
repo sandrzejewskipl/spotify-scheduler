@@ -64,7 +64,9 @@ You can fully configure your settings and set your schedule using the GUI. If yo
 - English (en)
 - Polish (pl)
 
-<b>DEVICE NAME</b> - name (or part of it) of the device in Spotify API that will play music. It defaults to "DESKTOP", because default windows computer name starts with "DESKTOP-" and Spotify sets device name of a Windows app to it.
+<b>DEVICE NAME</b> - name (or part of it) of the device in Spotify API that will play music. You can find the device name in the bottom-left corner or check the list of devices in the Settings tab.
+
+It defaults to "DESKTOP", because default windows computer name starts with "DESKTOP-" and Spotify sets device name of a Windows app to it.
 
 <b>Killswitch</b> - feature that kills the Spotify process(es) when an error with API occurs when pausing the playback. It prevents playing music out of schedule.
 
