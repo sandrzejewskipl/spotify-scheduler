@@ -49,7 +49,8 @@ Make sure you have <b>Python3-tk</b> installed.
 - Set the Redirect URI to: `http://localhost:8080`.<br>
 - Select Web API and Web Playback SDK.<br>
 
-Run this command from the command line in the same directory.<br>
+Run this command from the command line in the same directory.
+
 `python3 main.py`
 
 On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify. Then OAuth popup should open.
