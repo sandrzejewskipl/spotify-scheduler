@@ -19,7 +19,7 @@ import platform
 from translations import translations
 import os
 
-version="1.2.3"
+version="1.2.4"
 config_file="config.json"
 schedule_file="schedule.txt"
 log_file="output.log"
@@ -469,8 +469,8 @@ replace_button = ttk.Button(button_frame, text=_("Restore default"), command=rep
 replace_button.pack(side="left", padx=5)
 
 playlist_info = {
-    "name": _("no_playlist_name"),
-    "owner": "",
+    "name": _("failed_to_fetch_data"),
+    "owner": _("failed_to_fetch_data"),
     "image_url": ""
 }
 
@@ -479,8 +479,10 @@ def get_playlist_info():
     if PLAYLIST_ID!="":
         try:
             playlist = sp.playlist(PLAYLIST_ID)
-            playlist_info["name"] = playlist["name"]
-            playlist_info["owner"] = playlist["owner"]['display_name']
+            if playlist["name"]:
+                playlist_info["name"] = playlist["name"]
+            if playlist["owner"]:
+                playlist_info["owner"] = playlist["owner"]['display_name']
 
 
             # Get playlist image url
@@ -498,29 +500,32 @@ def change_playlist():
     global PLAYLIST_ID
     global playlist_info
     user_input = playlist_entry.get().strip()
-    playlist_entry.delete(0, tk.END)
-    # check if id/url
-    PLAYLIST_ID = extract_playlist_id(user_input) if "open.spotify.com" in user_input else user_input
-    if not PLAYLIST_ID:
-        timestamped_print("Failed to extract playlist ID.")
-        return
-    playlist_info = {
-        "name": _("The playlist has been changed but its data could not be retrieved."),
-        "image_url": ""
-    }
-    try:
-        with open(config_file, "r") as f:
-            config = json.load(f)
-    except FileNotFoundError:
-        config = {}
+    if user_input!='':
+        playlist_entry.delete(0, tk.END)
+        # check if id/url
+        PLAYLIST_ID = extract_playlist_id(user_input) if "open.spotify.com" in user_input else user_input
+        if not PLAYLIST_ID:
+            timestamped_print("Failed to extract playlist ID.")
+            return
+        playlist_info = {
+            "name": _("The playlist has been changed but its data could not be retrieved."),
+            "image_url": ""
+        }
+        try:
+            with open(config_file, "r") as f:
+                config = json.load(f)
+        except FileNotFoundError:
+            config = {}
 
-    config['PLAYLIST_ID'] = PLAYLIST_ID
+        config['PLAYLIST_ID'] = PLAYLIST_ID
 
-    # Save to config.json
-    with open(config_file, "w") as f:
-        json.dump(config, f, indent=4)
-    display_playlist_info()
-    pause_music()
+        # Save to config.json
+        with open(config_file, "w") as f:
+            json.dump(config, f, indent=4)
+        display_playlist_info()
+        pause_music()
+    else:
+        timestamped_print(f"Playlist ID can't be blank.")
 
 # Playlist container
 playlist_info_frame = ttk.Frame(playlist_frame)
@@ -723,7 +728,7 @@ def update_now_playing_info():
                     if playlist_details:
                         playlist_name = playlist_details.get("name", "-")
                 except Exception as e:
-                    playlist_name = _("no_playlist_name")
+                    playlist_name = _("failed_to_fetch_data")
                 
             playlist_info_str = f"{_('Playlist')}: {playlist_name}"
             
