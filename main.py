@@ -19,7 +19,7 @@ import platform
 from translations import translations
 import os
 
-version="1.2.1"
+version="1.2.2"
 config_file="config.json"
 schedule_file="schedule.txt"
 log_file="output.log"
@@ -158,6 +158,14 @@ notebook.add(info_frame, text=_("About"))
 def open_link(url):
     import webbrowser
     webbrowser.open(url)
+try:
+    icon_image = Image.open(bundle_path("icon.ico"))
+    icon_photo = ImageTk.PhotoImage(icon_image)
+    icon_label = tk.Label(info_frame, image=icon_photo)
+    icon_label.image = icon_photo  # Zachowaj referencję, aby zapobiec usunięciu przez Garbage Collector
+    icon_label.pack(pady=10)
+except Exception as e:
+    print(f"Failed to load icon: {e}")    
 
 info_text = tk.Text(info_frame, wrap="word", height=10, width=70, font=("Arial", 12))
 info_text.pack(expand=True, pady=20, padx=20)
@@ -415,14 +423,14 @@ def toggle_pause():
     timestamped_print(f"App state: {status}")
     pause_button.config(text=_("Resume Automation") if is_paused else _("Pause Automation"))
     if not is_paused:
-        pause_play_btn.config(text="Pause music and stop automation")
+        pause_play_btn.config(text=_("Pause music and stop automation"))
 
 def pauseandauto():
     global is_paused
     if is_paused:
         is_paused = False
         pause_button.config(text=_("Resume Automation") if is_paused else _("Pause Automation"))
-        pause_play_btn.config(text="Pause music and stop automation")
+        pause_play_btn.config(text=_("Pause music and stop automation"))
     else:
         is_paused = True
         pause_button.config(text=_("Resume Automation") if is_paused else _("Pause Automation"))
@@ -831,7 +839,7 @@ def pause_music(retries=3, delay=2):
             if current_playback and current_playback["is_playing"]:
                 sp.pause_playback()
                 timestamped_print("Playback has been paused.")
-                status.set(_("Playback has been paused."))
+            status.set(_("out_of_schedule_paused"))
             return  # Zakończ funkcję, jeśli się udało
         except Exception as e:
             attempt += 1
@@ -905,7 +913,7 @@ def main():
                 except Exception as ex:
                     timestamped_print(f"Error getting playback status: {ex}")
             else:
-                status.set(_( "out_of_schedule"))
+                status.set(_("out_of_schedule"))
                 pause_music()
                 
         

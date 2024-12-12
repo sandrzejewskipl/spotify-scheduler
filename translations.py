@@ -64,6 +64,7 @@ translations = {
         "Playback has been paused.": "Odtwarzanie zostało wstrzymane.",
         "check_schedule": "Sprawdź poniższy harmonogram na dziś i dostosuj go w razie potrzeby. Skrypt zostanie uruchomiony za 5 sekund.\n",
         "out_of_schedule": "Czas poza harmonogramem. Odtwarzanie nie zostało zatrzymane.",
+        "out_of_schedule_paused": "Czas poza harmonogramem. Odtwarzanie jest zatrzymane.",
         "Language": "Język",
         "Detected devices": "Wykryte urządzenia",
         "Playlist not set": "Playlista nie ustawiona"
@@ -99,6 +100,7 @@ translations = {
         "no_playback": "Nothing is playing right now.",
         "no_active_devices": "No active Spotify devices.",
         "check_schedule": "Check the schedule for today below and adjust it if needed. The script will run in 5 seconds.\n",
-        "out_of_schedule": "Out of schedule. Playback has not been stopped."
+        "out_of_schedule": "Out of schedule. Playback has not been stopped.",
+        "out_of_schedule_paused": "Out of schedule. Playback is stopped."
     }
 }
