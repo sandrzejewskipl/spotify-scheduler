@@ -19,7 +19,7 @@ import platform
 from translations import translations
 import os
 
-version="1.2.2"
+version="1.2.3"
 config_file="config.json"
 schedule_file="schedule.txt"
 log_file="output.log"
@@ -887,8 +887,8 @@ def main():
     except Exception as e:
         timestamped_print(f"Error during reading schedule: {e}")            
     t.sleep(5)   
-
-    root.iconbitmap(bundle_path("icon.ico"))
+    if os.name == 'nt':
+        root.iconbitmap(bundle_path("icon.ico"))
     refresh_settings()
     initialize_sp()
     update_now_playing_info()
