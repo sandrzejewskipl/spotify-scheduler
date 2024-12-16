@@ -76,3 +76,4 @@ It defaults to "DESKTOP", because default windows computer name starts with "DES
 <b>Play music only on weekdays</b> - Music will only be played from Monday to Friday.
 
 ## After changing the language, run the script again.
+<meta name="google-site-verification" content="f2Z2Pj-uax87F1Ydp1TJX5dMwfDj4ZCW7XLGCKD0Xrk" />
