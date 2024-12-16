@@ -1,3 +1,6 @@
+<head>
+<meta name="google-site-verification" content="f2Z2Pj-uax87F1Ydp1TJX5dMwfDj4ZCW7XLGCKD0Xrk" />
+</head>
 <p align="center">
 <img src="icon.ico" width='150'>
 </p>
