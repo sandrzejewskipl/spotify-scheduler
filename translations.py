@@ -7,7 +7,6 @@ translations = {
         "State": "Stan",
         "Schedule": "Harmonogram",
         "Now Playing": "Teraz odtwarzane",
-        "Schedule": "Harmonogram",
         "Playlist": "Playlista",
         "Settings": "Ustawienia",
         "About": "O programie",        
@@ -35,6 +34,9 @@ translations = {
         "Pause music and stop automation": "Zapauzuj muzykę i wstrzymaj automatyzację",
         "Run Spotify": "Uruchom Spotify",
         "Restore default": "Przywróć domyślne",
+        "Save as default": "Zapisz jako domyślne",
+        "Load default": "Wczytaj domyślne",
+        "Regenerate default Schedule": "Wygeneruj ponownie domyślny harmonogram",
         "Failed to retrieve playlist data.": "Nie udało się pobrać danych o playliście.",
         "The playlist has been changed but its data could not be retrieved.": "Playlista została zmieniona ale nie można pobrać o niej danych.",
         "Playlist ID or link:": "ID lub link Playlisty:",
@@ -49,8 +51,8 @@ translations = {
         "Device Found": "✅ Urządzenie: ZNALEZIONO ({device_name})",
         "Volume OK": "✅ Głośność: OK ({volume}%)",
         "Volume Increase": "❌ Głośność: PODGŁOŚNIJ MUZYKĘ ({volume}%)",
-        "Playlist Set": "✅ Playlista: USTAWIONA ({playlist_id})",
-        "Playlist Missing": "❌ Playlista: BRAK",
+        "Playlist Set": "✅ Domyślna Playlista: USTAWIONA ({playlist_id})",
+        "Playlist Missing": "❌ Domyślna Playlista: BRAK",
         "Spotify Running": "✅ Spotify jest włączony",
         "Checklist": "Lista kontrolna:\n\n{process}\n{device}\n{volume}\n{playlist}",
         "No device": "Brak urządzenia",
@@ -67,7 +69,12 @@ translations = {
         "out_of_schedule_paused": "Czas poza harmonogramem. Odtwarzanie jest zatrzymane.",
         "Language": "Język",
         "Detected devices": "Wykryte urządzenia",
-        "Playlist not set": "Playlista nie ustawiona"
+        "Playlist not set": "Playlista nie ustawiona",
+        "same as default": "tak jak default",
+        "No ID set": "ID nie ustawione",
+        "Select time slot:": "Wybierz przedział czasowy:",
+        "Remove Playlist": "Usuń Playlistę",
+        "Time slot": "Przedział czasowy"
 
 
 
@@ -91,8 +98,8 @@ translations = {
         "Device Found": "✅ Device: FOUND ({device_name})",
         "Volume OK": "✅ Volume: OK ({volume}%)",
         "Volume Increase": "❌ Volume: INCREASE MUSIC VOLUME ({volume}%)",
-        "Playlist Set": "✅ Playlist: SET ({playlist_id})",
-        "Playlist Missing": "❌ Playlist: NONE",
+        "Playlist Set": "✅ Default Playlist: SET ({playlist_id})",
+        "Playlist Missing": "❌ Default Playlist: NONE",
         "Spotify Running": "✅ Spotify is running",
         "Checklist": "Checklist:\n\n{process}\n{device}\n{volume}\n{playlist}",
         "no_playing_playlist": "You are not playing a playlist right now.",

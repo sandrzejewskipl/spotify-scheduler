@@ -7,7 +7,6 @@ import psutil
 import sys
 import tkinter as tk
 from tkinter import ttk
-from tkinter.scrolledtext import ScrolledText
 import re
 from PIL import Image, ImageTk
 from io import BytesIO
@@ -19,14 +18,20 @@ import platform
 from translations import translations
 import os
 
-version="1.2.4"
+version="1.3.0"
 config_file="config.json"
 schedule_file="schedule.txt"
+default_schedule_file='default-schedule.txt'
 log_file="output.log"
+schedule_playlists_file = "schedule_playlists.json"
 
 current_pid = os.getpid()
 parent_pid = psutil.Process(current_pid).parent().pid
 
+def timestamped_print(message):
+    current_time = datetime.now().isoformat(sep=" ", timespec="seconds")
+    print(f"{current_time} | {message}")
+    
 # Check if the folder exists, if not, create it
 if not os.path.exists("spotify-scheduler_data"):
     os.makedirs("spotify-scheduler_data")
@@ -63,16 +68,18 @@ def load_config():
             schedule_file.write(default)
 load_config()
 
+
+
 # Load config
 config = load_config()
 
 CLIENT_ID = config['CLIENT_ID']
 CLIENT_SECRET = config['CLIENT_SECRET']
-PLAYLIST_ID = config['PLAYLIST_ID']
 DEVICE_NAME = config['DEVICE_NAME']
 KILLSWITCH_ON = config['KILLSWITCH_ON']
 WEEKDAYS_ONLY = config['WEEKDAYS_ONLY']
 LANG = config['LANG']
+PLAYLIST_ID = None
 
 REDIRECT_URI = "http://localhost:8080"
 SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private"
@@ -118,7 +125,6 @@ def save_settings():
     config = load_config()
     CLIENT_ID = config['CLIENT_ID']
     CLIENT_SECRET = config['CLIENT_SECRET']
-    PLAYLIST_ID = config['PLAYLIST_ID']
     DEVICE_NAME = config['DEVICE_NAME']
     KILLSWITCH_ON = config['KILLSWITCH_ON']
     WEEKDAYS_ONLY = config['WEEKDAYS_ONLY']
@@ -134,6 +140,7 @@ def save_settings():
 root = tk.Tk()
 root.title(f"Spotify Scheduler {version} | by @sandrzejewskipl")
 root.geometry("800x600")
+root.resizable(False, False) 
 
 
 # Adding bookmarks
@@ -162,7 +169,7 @@ try:
     icon_image = Image.open(bundle_path("icon.ico"))
     icon_photo = ImageTk.PhotoImage(icon_image)
     icon_label = tk.Label(info_frame, image=icon_photo)
-    icon_label.image = icon_photo  # Zachowaj referencję, aby zapobiec usunięciu przez Garbage Collector
+    icon_label.image = icon_photo 
     icon_label.pack(pady=10)
 except Exception as e:
     print(f"Failed to load icon: {e}")    
@@ -271,10 +278,6 @@ class Logger:
 
 sys.stdout = Logger(log_file, sys.__stdout__)
 
-def timestamped_print(message):
-    current_time = datetime.now().isoformat(sep=" ", timespec="seconds")
-    print(f"{current_time} | {message}")
-
 def load_schedule_to_table():
     try:
         with open(schedule_file, "r") as file:
@@ -284,28 +287,47 @@ def load_schedule_to_table():
                 start_time, end_time = line.strip().split("-")
                 schedule_table.insert("", "end", values=(start_time, end_time))
         timestamped_print("Schedule loaded into table.")
+        refresh_playlist_gui()
     except FileNotFoundError:
         timestamped_print("The file schedule.txt does not exist.")
     except Exception as e:
-        timestamped_print(f"Error loading schedule: {e}")
+        timestamped_print(f"Error during loading schedule: {e}")
+def save_default_schedule():
+    try:
+        shutil.copy(schedule_file, default_schedule_file)
+        load_schedule_to_table()
+        timestamped_print("Schedule loaded into table.")
+    except Exception as e:
+        timestamped_print(f"Error during saving schedule: {e}")
         
 def replace_schedule_with_default():
     try:
-        default_data = """8:45-8:55
+        shutil.copy(default_schedule_file, schedule_file)
+        timestamped_print("Setting schedule to default.")
+        load_schedule_to_table()
+        generate_schedule_playlists()
+        refresh_playlist_gui()
+
+    except Exception as e:
+        timestamped_print(f"Error while changing schedule: {e}")
+
+# Create default schedule
+def generate_default(force=True):
+    global default_schedule_file, default_schedule
+    if (not os.path.exists(default_schedule_file)) or force==True:
+        with open(default_schedule_file, "w") as file:
+            default_schedule = """8:45-8:55
 9:40-9:45
 10:30-10:45
 11:30-11:35
 12:20-12:25
 13:10-13:25
 14:10-14:15"""
-        with open(schedule_file, "w") as file:
-            file.write(default_data)
-        timestamped_print("Setting schedule to default.")
-        load_schedule_to_table()
-
-    except Exception as e:
-        timestamped_print(f"Error while changing schedule: {e}")
-
+            file.write(default_schedule)
+        if force:
+            timestamped_print("Regenerated default schedule")
+            
+generate_default(False)
 
 def save_schedule_from_table():
     try:
@@ -325,15 +347,64 @@ def save_schedule_from_table():
 
         timestamped_print("The schedule has been saved.")
         load_schedule_to_table()
+        refresh_playlist_gui()
     except Exception as e:
         timestamped_print(f"Error during saving schedule: {e}")
+def generate_schedule_playlists():
+    try:
+        new_data={}
+        if os.path.exists(schedule_playlists_file):
+            with open(schedule_playlists_file, "r+") as json_file:
+                data = json.load(json_file)
+                if "default" in data:
+                    default_key=data["default"]
+                    new_data={"default": default_key}
+                json_file.seek(0)
+                json_file.truncate()
+                json.dump(new_data, json_file, indent=4)
+        else:
+            with open(schedule_playlists_file, "w") as json_file:
+                json.dump(new_data, json_file, indent=4)
+    except Exception as e:
+        timestamped_print(f"Error during saving playlists file: {e}")
+def get_playlist_for_schedule(key=None):
+    global last_schedule, schedule_playlists_file
+    try:
+        with open(schedule_file, "r+") as file:
+            lines = file.readlines()
+            now = datetime.now().time()
+            if key==None:
+                for line in lines:
+                    start_str, end_str = line.strip().split("-")
+                    start_time = datetime.strptime(start_str, "%H:%M").time()
+                    end_time = datetime.strptime(end_str, "%H:%M").time()
+                    if start_time <= now <= end_time:
+                        key=line
+                        break
+            try:
+                with open(schedule_playlists_file, "r") as file:
+                    data = json.load(file)
+                    key = key.strip()
+                    if key in data:
+                        return data[key]
 
+                    elif "default" in data:
+                        return data["default"]
+                    else:
+                        return None
+            except FileNotFoundError:
+                generate_schedule_playlists()
+            except Exception as e:
+                timestamped_print(f"Error during loading playlists file: {e}")
+    except Exception as e:
+        timestamped_print(f"Error during reading schedule: {e}")
+    return False
 
 def is_valid_time_format(time_str):
     time_pattern = r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$"  # Hours: 00-23, Minutes: 00-59
     return re.match(time_pattern, time_str) is not None
 
-def add_entry():
+def add_entry(event=None):
     start_time = (start_time_entry.get()).replace(';',':')
     end_time = (end_time_entry.get()).replace(';',':')
 
@@ -367,15 +438,17 @@ def delete_selected_entry():
     selected_item = schedule_table.selection()
     if selected_item:
         for item in selected_item:
+            start_time, end_time = schedule_table.item(item, "values")
+            remove_playlist(f"{start_time}-{end_time}")
             schedule_table.delete(item)
         timestamped_print("The selected entry has been deleted.")
         save_schedule_from_table()
     else:
         timestamped_print("No entries have been marked for deletion.")
 
-# dont know if it's doing something, 'dont want to break things xD
-for widget in schedule_frame.winfo_children():
-    widget.destroy()
+def regenerate():
+    generate_default()
+    replace_schedule_with_default()
 
 # Schedule table
 columns = ("start", "end")
@@ -392,11 +465,13 @@ start_time_label = ttk.Label(entry_frame, text=_("START_LABEL"))
 start_time_label.pack(side="left", padx=5)
 start_time_entry = ttk.Entry(entry_frame, width=10)
 start_time_entry.pack(side="left", padx=5)
+start_time_entry.bind('<Return>', add_entry)
 
 end_time_label = ttk.Label(entry_frame, text=_("END_LABEL"))
 end_time_label.pack(side="left", padx=5)
 end_time_entry = ttk.Entry(entry_frame, width=10)
 end_time_entry.pack(side="left", padx=5)
+end_time_entry.bind('<Return>', add_entry)
 
 add_button = ttk.Button(entry_frame, text=_("Add Entry"), command=add_entry)
 add_button.pack(side="left", padx=5)
@@ -408,11 +483,22 @@ delete_button.pack(side="left", padx=5)
 button_frame = ttk.Frame(schedule_frame)
 button_frame.pack(fill="x", padx=10, pady=10)
 
-load_button = ttk.Button(button_frame, text=_("Reload Schedule"), command=load_schedule_to_table)
-load_button.pack(side="left", padx=5)
 
-save_button = ttk.Button(button_frame, text=_("Save Schedule"), command=save_schedule_from_table)
-save_button.pack(side="right", padx=5)
+
+replace_button = ttk.Button(button_frame, text=_("Load default"), command=replace_schedule_with_default)
+replace_button.pack(side="left", padx=5)
+
+save_button = ttk.Button(button_frame, text=_("Save as default"), command=save_default_schedule)
+save_button.pack(side="left", padx=5)
+
+regenerate_button = ttk.Button(button_frame, text=_("Restore default"), command=regenerate)
+regenerate_button.pack(side="left", padx=5)
+
+load_button = ttk.Button(button_frame, text=_("Reload Schedule"), command=load_schedule_to_table)
+load_button.pack(side="right", padx=5)
+
+
+
 
 is_paused = False
 
@@ -464,10 +550,150 @@ status.set("")
 status_label = ttk.Label(control_frame, textvariable=status, font=("Arial", 10))
 status_label.pack(side="right", padx=10)
 
-# Restore default
-replace_button = ttk.Button(button_frame, text=_("Restore default"), command=replace_schedule_with_default)
-replace_button.pack(side="left", padx=5)
 
+# Playlist section 
+
+
+
+# Load playlist scheduling
+def load_schedule_playlists():
+    try:
+        with open(schedule_playlists_file, "r") as file:
+            return json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"default": ""} 
+    
+# Save playlist scheduling
+def save_schedule_playlists():
+    try:
+        with open(schedule_playlists_file, "w") as file:
+            json.dump(schedule_playlists, file, indent=4)
+        timestamped_print("Schedule playlists saved successfully.")
+    except Exception as e:
+        timestamped_print(f"Error saving schedule playlists: {e}")
+
+# Load default scheduled playlists
+schedule_playlists = load_schedule_playlists()
+
+# Read schedule file
+def read_schedule_file():
+    try:
+        with open("schedule.txt", "r") as file:
+            return ["default"] + [line.strip() for line in file.readlines()] 
+    except FileNotFoundError:
+        return ["default"]
+
+schedule = read_schedule_file()
+selected_time = tk.StringVar()
+
+def refresh_playlist_gui(last=None):
+    global schedule, schedule_playlists
+
+    schedule = read_schedule_file()
+    schedule_playlists = load_schedule_playlists()
+
+    schedule_with_ids = [f"{hour} ({get_playlist_id_for_hour(hour)})" for hour in schedule]
+
+    time_dropdown['values'] = schedule_with_ids
+
+    if schedule_with_ids:
+        if last:
+            matching_item = next((item for item in schedule_with_ids if item.startswith(last + " ")), None)
+            if matching_item:
+                selected_time.set(matching_item)
+            else:
+                selected_time.set(schedule_with_ids[0])
+        else:
+            selected_time.set(schedule_with_ids[0])
+
+    update_view_for_time()
+
+
+def get_playlist_id_for_hour(hour):
+    # The function returns the playlist ID for the given time value. If the time does not exist in schedule_playlists, it returns the text "default".
+    default_text=_("same as default")
+    if hour=="default":
+        default_text=_("No ID set")
+
+    return schedule_playlists.get(hour, default_text)
+
+
+# Function to update the view based on the selected time
+def update_view_for_time(*args):
+    global PLAYLIST_ID
+    current_time = selected_time.get()
+
+    hour = current_time.split("(")[0].rstrip(" ")
+    PLAYLIST_ID = get_playlist_for_schedule(key=hour)
+        
+    display_playlist_info()
+
+
+
+# Change playlist to selected time
+def change_playlist():
+    global PLAYLIST_ID
+    global playlist_info
+    user_input = playlist_entry.get().strip()
+    if user_input != "":
+        current_time = selected_time.get().split("(")[0].rstrip(" ") 
+        schedule_playlists[current_time] = user_input
+        save_schedule_playlists()
+        timestamped_print(f"Playlist for {current_time} updated to {user_input}.")
+
+        playlist_entry.delete(0, tk.END)
+        PLAYLIST_ID = extract_playlist_id(user_input) if "open.spotify.com" in user_input else user_input
+        if not PLAYLIST_ID:
+            timestamped_print("Failed to extract playlist ID.")
+            return
+        playlist_info = {
+            "name": _("The playlist has been changed but its data could not be retrieved."),
+            "image_url": ""
+        }
+        try:
+            with open(config_file, "r") as f:
+                config = json.load(f)
+        except FileNotFoundError:
+            config = {}
+
+        # Save to config.json
+        with open(config_file, "w") as f:
+            json.dump(config, f, indent=4)
+        refresh_playlist_gui(current_time)
+        spotify_main()
+    else:
+        timestamped_print(f"Playlist ID can't be blank.")
+
+def remove_playlist(user_input=None):
+    global schedule_playlists
+    if user_input==None:
+        user_input = selected_time.get().split("(")[0].rstrip(" ")  # Selected time
+    if user_input in schedule_playlists:
+        del schedule_playlists[user_input]
+        save_schedule_playlists()
+        timestamped_print(f"Playlist for {user_input} has been removed.")
+
+        refresh_playlist_gui()
+        display_playlist_info()
+        pause_music()
+    else:
+        timestamped_print(f"No playlist found for {user_input}.")
+
+# Add a dropdown list at the top
+time_selection_frame = ttk.Frame(playlist_frame)
+time_selection_frame.pack(fill="x", padx=10, pady=(5,0))
+
+time_label = ttk.Label(time_selection_frame, text=_("Select time slot:"))
+time_label.pack(side="left", padx=5)
+
+time_dropdown = ttk.Combobox(time_selection_frame, textvariable=selected_time, state="readonly", values=schedule, width=50, height=20)
+time_dropdown.pack(side="left")
+time_dropdown.bind("<<ComboboxSelected>>", update_view_for_time)
+
+# Set default as selected time
+if schedule:
+    selected_time.set(schedule[0])
+    
 playlist_info = {
     "name": _("failed_to_fetch_data"),
     "owner": _("failed_to_fetch_data"),
@@ -476,7 +702,7 @@ playlist_info = {
 
 def get_playlist_info():
     global PLAYLIST_ID
-    if PLAYLIST_ID!="":
+    if PLAYLIST_ID:
         try:
             playlist = sp.playlist(PLAYLIST_ID)
             if playlist["name"]:
@@ -494,38 +720,8 @@ def get_playlist_info():
 
             timestamped_print(f"Playlist: {playlist_info['name']} Owner: {playlist_info['owner']}")
         except Exception as e:
-            timestamped_print(f"Failed to retrieve playlist data: {e}")
+            timestamped_print(f"Failed to retrieve playlist {PLAYLIST_ID} data: {e}")
 
-def change_playlist():
-    global PLAYLIST_ID
-    global playlist_info
-    user_input = playlist_entry.get().strip()
-    if user_input!='':
-        playlist_entry.delete(0, tk.END)
-        # check if id/url
-        PLAYLIST_ID = extract_playlist_id(user_input) if "open.spotify.com" in user_input else user_input
-        if not PLAYLIST_ID:
-            timestamped_print("Failed to extract playlist ID.")
-            return
-        playlist_info = {
-            "name": _("The playlist has been changed but its data could not be retrieved."),
-            "image_url": ""
-        }
-        try:
-            with open(config_file, "r") as f:
-                config = json.load(f)
-        except FileNotFoundError:
-            config = {}
-
-        config['PLAYLIST_ID'] = PLAYLIST_ID
-
-        # Save to config.json
-        with open(config_file, "w") as f:
-            json.dump(config, f, indent=4)
-        display_playlist_info()
-        pause_music()
-    else:
-        timestamped_print(f"Playlist ID can't be blank.")
 
 # Playlist container
 playlist_info_frame = ttk.Frame(playlist_frame)
@@ -546,9 +742,18 @@ playlist_entry_label.grid(row=1, column=1, padx=5, pady=2, sticky="w")
 playlist_entry = ttk.Entry(playlist_info_frame, width=75)
 playlist_entry.grid(row=1, column=1, padx=125, pady=2)
 
-# button
-change_playlist_btn = ttk.Button(playlist_info_frame, text=_("Set Playlist"), command=change_playlist)
-change_playlist_btn.grid(row=2, column=1, columnspan=2, pady=10)
+# Container for buttons
+buttons_frame = ttk.Frame(playlist_info_frame)
+buttons_frame.grid(row=2, column=1, columnspan=2, pady=10)
+
+# Set Playlist button
+change_playlist_btn = ttk.Button(buttons_frame, text=_("Set Playlist"), command=change_playlist)
+change_playlist_btn.pack(side="left", padx=5)
+
+# Remove Playlist button
+remove_playlist_btn = ttk.Button(buttons_frame, text=_("Remove Playlist"), command=remove_playlist)
+remove_playlist_btn.pack(side="left", padx=5)
+
 
 
 
@@ -621,6 +826,7 @@ load_playlists_btn.pack(side='left', pady=10, padx=10)
 
 
 def display_playlist_info():
+
     get_playlist_info()
 
     playlist_label.config(text=f"{_('Playlist')}: {playlist_info['name']}\n{_('Owner')}: {playlist_info['owner']}")
@@ -640,6 +846,8 @@ def display_playlist_info():
     else:
         playlist_image_label.image=""
 
+
+# of
 
 # now playing label
 now_playing_label = ttk.Label(now_playing_frame, text="", font=("Arial", 12))
@@ -665,7 +873,7 @@ def checklist():
                     else:
                         volume = _("Volume Increase", volume=volume)
                     break
-        
+        PLAYLIST_ID=get_playlist_for_schedule("default")
         if PLAYLIST_ID:
             playlist = _("Playlist Set", playlist_id=PLAYLIST_ID)
         else:
@@ -740,7 +948,7 @@ def update_now_playing_info():
             f"{playlist_info_str}\n"
             f"{_('Device')}: {target_device_name}\n\n"
             f"{_('State')}: {playback_state}\n"
-            f"{_('Schedule')}: {last_schedule.strip()}")
+            f"{_('Time slot')}: {last_schedule.strip()}")
             )
 
             # Get and display cover photo
@@ -789,8 +997,9 @@ def killswitch():
                     status.set(_("Killed Spotify process"))
 
 last_schedule=''
+last_endtime=None
 def is_within_schedule(schedule_file=schedule_file):
-    global last_schedule
+    global last_schedule, WEEKDAYS_ONLY, last_endtime
     try:
         with open(schedule_file, "r+") as file:
             lines = file.readlines()
@@ -801,10 +1010,11 @@ def is_within_schedule(schedule_file=schedule_file):
                 end_time = datetime.strptime(end_str, "%H:%M").time()
                 if start_time <= now <= end_time:
                     weekno = datetime.today().weekday()
-                    if WEEKDAYS_ONLY == "false":
+                    if not WEEKDAYS_ONLY:
                         weekno = 0
                     if weekno < 5:
                         last_schedule=line
+                        last_endtime=datetime.combine(datetime.now(), end_time)
                         return True
     except FileNotFoundError:
         timestamped_print(f"The file schedule.txt does not exist, it will be created now from default.")
@@ -813,7 +1023,9 @@ def is_within_schedule(schedule_file=schedule_file):
         timestamped_print(f"Error during reading schedule: {e}")
     return False
 
+last_playlist=''
 def play_music():
+    global last_playlist
     try:
         devices = sp.devices()
         if not devices["devices"]:
@@ -828,7 +1040,9 @@ def play_music():
                 break
 
         if target_device:
+            PLAYLIST_ID=get_playlist_for_schedule()
             sp.start_playback(device_id=target_device, context_uri=f"spotify:playlist:{PLAYLIST_ID}")
+            last_playlist=PLAYLIST_ID
             timestamped_print(f"Music playing on device {target_device}.")
         else:
             timestamped_print(f"No device found with name {DEVICE_NAME}.")
@@ -837,13 +1051,17 @@ def play_music():
         timestamped_print(f"Error while playing: {ex}")
 
 def pause_music(retries=3, delay=2):
+    global last_endtime
     attempt = 0
     while attempt < retries:
         try:
             current_playback = sp.current_playback()
             if current_playback and current_playback["is_playing"]:
                 sp.pause_playback()
-                timestamped_print("Playback has been paused.")
+                delay=""
+                if last_endtime:
+                    delay=f"(Delay: {round(((datetime.now()-last_endtime).total_seconds()),2)}s)"
+                timestamped_print(f"Playback has been paused. {delay}")
             status.set(_("out_of_schedule_paused"))
             return  # Zakończ funkcję, jeśli się udało
         except Exception as e:
@@ -853,7 +1071,26 @@ def pause_music(retries=3, delay=2):
     timestamped_print("Failed to pause playback after multiple attempts.")
     killswitch()
 
+def spotify_main():
+    global last_playlist
+    if not is_paused: 
+        if is_within_schedule():
+            try:
+                current_playback = sp.current_playback()
+                PLAYLIST_ID=get_playlist_for_schedule()
+                if (not current_playback) or (not current_playback["is_playing"]) or (not last_playlist==PLAYLIST_ID):
 
+                    if PLAYLIST_ID:
+                        play_music()
+                    else:
+                        status.set(_("Playlist not set"))
+                else:
+                    status.set(_("Music is currently playing."))
+            except Exception as ex:
+                timestamped_print(f"Error getting playback status: {ex}")
+        else:
+            status.set(_("out_of_schedule"))
+            pause_music()
 def main():
     global CLIENT_ID, CLIENT_SECRET, config
     
@@ -898,30 +1135,12 @@ def main():
     initialize_sp()
     update_now_playing_info()
     load_schedule_to_table()
-    display_playlist_info()
     fetch_user_playlists()
     pause_music()
     
     
     def loop():
-        if not is_paused: 
-            if is_within_schedule():
-                try:
-                    current_playback = sp.current_playback()
-                    if not current_playback or not current_playback["is_playing"]:
-                        if PLAYLIST_ID!='':
-                            play_music()
-                        else:
-                            status.set(_("Playlist not set"))
-                    else:
-                        status.set(_("Music is currently playing."))
-                except Exception as ex:
-                    timestamped_print(f"Error getting playback status: {ex}")
-            else:
-                status.set(_("out_of_schedule"))
-                pause_music()
-                
-        
+        spotify_main()
         root.after(5000, loop)  # Loop every 5 seconds
 
     loop()
