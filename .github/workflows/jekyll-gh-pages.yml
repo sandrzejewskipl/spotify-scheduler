@@ -35,6 +35,10 @@ jobs:
         with:
           source: ./
           destination: ./_site
+      - name: Add Google Search Console verification file
+        run: |
+          echo "google-site-verification: googlef4755ab8de134e7d.html" > ./_site/googlef4755ab8de134e7d.html
+      
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
 
