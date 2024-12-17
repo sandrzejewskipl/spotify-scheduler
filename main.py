@@ -18,7 +18,7 @@ import platform
 from translations import translations
 import os
 
-version="1.3.1"
+version="1.3.2"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
@@ -1108,8 +1108,8 @@ def spotify_main():
 
 def main():
     global CLIENT_ID, CLIENT_SECRET, config
-    open_link("https://developer.spotify.com/dashboard")
     if(not CLIENT_ID):
+        open_link("https://developer.spotify.com/dashboard")
         print("Create an app here: https://developer.spotify.com/dashboard")
         CLIENT_ID = input("Enter CLIENT_ID: ")
 
