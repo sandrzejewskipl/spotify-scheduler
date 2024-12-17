@@ -1094,7 +1094,7 @@ def spotify_main():
         else:
             status.set(_("out_of_schedule"))
             pause_music()
-            
+
 # Disable quickedit mode on Windows terminal.
 def disable_quickedit():
     if os.name == 'nt':
@@ -1104,7 +1104,6 @@ def disable_quickedit():
             kernel32.SetConsoleMode(kernel32.GetStdHandle(-10), 128)
         except Exception as e:
             timestamped_print(f'Cannot disable QuickEdit mode: {e}')
-disable_quickedit()
 
 def main():
     global CLIENT_ID, CLIENT_SECRET, config
@@ -1121,6 +1120,7 @@ def main():
             config = json.load(f)
     except FileNotFoundError:
         config = {}
+    disable_quickedit()
 
     config['CLIENT_ID'] = CLIENT_ID
     config['CLIENT_SECRET'] = CLIENT_SECRET
