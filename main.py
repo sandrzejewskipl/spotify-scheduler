@@ -36,8 +36,8 @@ def timestamped_print(message):
 def disable_quickedit():
     if os.name == 'nt':
         try:
-            import ctypes
-            kernel32 = ctypes.windll.kernel32
+            from ctypes import windll
+            kernel32 = windll.kernel32
             kernel32.SetConsoleMode(kernel32.GetStdHandle(-10), 128)
         except Exception as e:
             timestamped_print(f'Cannot disable QuickEdit mode: {e}')
