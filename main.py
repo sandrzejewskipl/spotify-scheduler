@@ -1107,12 +1107,10 @@ def disable_quickedit():
 
 def main():
     global CLIENT_ID, CLIENT_SECRET, config
-    if(not CLIENT_ID):
+    if(not CLIENT_ID or not CLIENT_SECRET):
         open_link("https://developer.spotify.com/dashboard")
         print("Create an app here: https://developer.spotify.com/dashboard")
         CLIENT_ID = input("Enter CLIENT_ID: ")
-
-    if(not CLIENT_SECRET):
         CLIENT_SECRET = input("Enter CLIENT_SECRET: ")
 
     try:
