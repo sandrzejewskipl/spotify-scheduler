@@ -18,7 +18,7 @@ import platform
 from translations import translations
 import os
 
-version="1.3.3"
+version="1.4"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
@@ -530,7 +530,18 @@ def pauseandauto():
 control_frame = ttk.Frame(root)
 control_frame.pack(side="top", fill="x", padx=10, pady=5)
 def run_spotify():
-    subprocess.run(["spotify"])
+    if os.name == 'nt':
+        try:
+            result = subprocess.run(["where", "spotify"], capture_output=True, text=True, check=True)
+            subprocess.run(["spotify"])
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            userdir = os.path.join(os.environ['USERPROFILE'], 'AppData\\Roaming\\Spotify\\Spotify.exe')
+            if os.path.exists(userdir):
+                subprocess.Popen([userdir], shell=True)
+            else:
+                timestamped_print("Spotify not found.")
+        except Exception as e:
+            timestamped_print(f"Error during launching Spotify: {e}")
 
 # Spotify button
 spotify_button = ttk.Button(control_frame, text=_("Run Spotify"), command=run_spotify)
