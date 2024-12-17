@@ -31,18 +31,7 @@ parent_pid = psutil.Process(current_pid).parent().pid
 def timestamped_print(message):
     current_time = datetime.now().isoformat(sep=" ", timespec="seconds")
     print(f"{current_time} | {message}")
-
-# Disable quickedit mode on Windows terminal.
-def disable_quickedit():
-    if os.name == 'nt':
-        try:
-            from ctypes import windll
-            kernel32 = windll.kernel32
-            kernel32.SetConsoleMode(kernel32.GetStdHandle(-10), 128)
-        except Exception as e:
-            timestamped_print(f'Cannot disable QuickEdit mode: {e}')
-disable_quickedit()
-    
+ 
 # Check if the folder exists, if not, create it
 if not os.path.exists("spotify-scheduler_data"):
     os.makedirs("spotify-scheduler_data")
@@ -1105,6 +1094,17 @@ def spotify_main():
         else:
             status.set(_("out_of_schedule"))
             pause_music()
+            
+# Disable quickedit mode on Windows terminal.
+def disable_quickedit():
+    if os.name == 'nt':
+        try:
+            from ctypes import windll
+            kernel32 = windll.kernel32
+            kernel32.SetConsoleMode(kernel32.GetStdHandle(-10), 128)
+        except Exception as e:
+            timestamped_print(f'Cannot disable QuickEdit mode: {e}')
+disable_quickedit()
 
 def main():
     global CLIENT_ID, CLIENT_SECRET, config
