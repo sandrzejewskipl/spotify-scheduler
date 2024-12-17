@@ -18,7 +18,7 @@ import platform
 from translations import translations
 import os
 
-version="1.3.0"
+version="1.3.1"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
@@ -31,6 +31,17 @@ parent_pid = psutil.Process(current_pid).parent().pid
 def timestamped_print(message):
     current_time = datetime.now().isoformat(sep=" ", timespec="seconds")
     print(f"{current_time} | {message}")
+
+# Disable quickedit mode on Windows terminal.
+def disable_quickedit():
+    if os.name == 'nt':
+        try:
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            kernel32.SetConsoleMode(kernel32.GetStdHandle(-10), 128)
+        except Exception as e:
+            timestamped_print(f'Cannot disable QuickEdit mode: {e}')
+disable_quickedit()
     
 # Check if the folder exists, if not, create it
 if not os.path.exists("spotify-scheduler_data"):
@@ -163,8 +174,11 @@ info_frame = ttk.Frame(notebook)
 notebook.add(info_frame, text=_("About"))
 
 def open_link(url):
-    import webbrowser
-    webbrowser.open(url)
+    try:
+        import webbrowser
+        webbrowser.open(url)
+    except Exception as e:
+        print(f"Failed to open link: {e}")    
 try:
     icon_image = Image.open(bundle_path("icon.ico"))
     icon_photo = ImageTk.PhotoImage(icon_image)
@@ -1092,19 +1106,9 @@ def spotify_main():
             status.set(_("out_of_schedule"))
             pause_music()
 
-# Disable quickedit mode on Windows terminal.
-def disable_quickedit():
-    if os.name == 'nt':
-        try:
-            import ctypes
-            kernel32 = ctypes.windll.kernel32
-            kernel32.SetConsoleMode(kernel32.GetStdHandle(-10), 128)
-        except Exception as e:
-            timestamped_print(f'Cannot disable QuickEdit mode: {e}')
-
 def main():
     global CLIENT_ID, CLIENT_SECRET, config
-    
+    open_link("https://developer.spotify.com/dashboard")
     if(not CLIENT_ID):
         print("Create an app here: https://developer.spotify.com/dashboard")
         CLIENT_ID = input("Enter CLIENT_ID: ")
@@ -1112,8 +1116,6 @@ def main():
     if(not CLIENT_SECRET):
         CLIENT_SECRET = input("Enter CLIENT_SECRET: ")
 
-    disable_quickedit()
-    
     try:
         with open(config_file, "r") as f:
             config = json.load(f)
