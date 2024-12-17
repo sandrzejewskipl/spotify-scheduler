@@ -18,7 +18,7 @@ import platform
 from translations import translations
 import os
 
-version="1.4"
+version="1.4.0"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
