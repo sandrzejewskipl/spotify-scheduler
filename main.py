@@ -18,7 +18,7 @@ import platform
 from translations import translations
 import os
 
-version="1.5.1"
+version="1.5.2"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
@@ -1253,7 +1253,7 @@ def main():
     
     def loop():
         spotify_main()
-        root.after(5000, loop)  # Loop every 5 seconds
+        root.after(2500, loop)  # Loop
 
     loop()
 
