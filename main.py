@@ -1107,7 +1107,7 @@ def play_music():
             devices = sp.devices()
 
         if not devices["devices"]:
-            status.set(_( "no_active_devices"))
+            status.set(_( "no_active_device"))
             if spotify_button_check() and AUTO_SPOTIFY and not last_spotify_run:
                 timestamped_print("Trying to run spotify.")
                 run_spotify()
@@ -1129,7 +1129,7 @@ def play_music():
                 timestamped_print(f"Music playing on device {target_device}.")
                 last_spotify_run=False
         else:
-            timestamped_print(f"No device found with name {DEVICE_NAME}.")
+            status.set(_( "no_active_device"))
             if spotify_button_check() and AUTO_SPOTIFY and not last_spotify_run:
                 timestamped_print("Trying to run spotify.")
                 run_spotify()

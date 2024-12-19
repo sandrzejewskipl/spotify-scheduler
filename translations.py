@@ -63,7 +63,7 @@ translations = {
         "failed_to_fetch_data": "Nie udało się pobrać danych.",
         "no_playback": "Nic nie jest teraz odtwarzane.",
         "Killed Spotify process": "Zabito proces Spotify",
-        "no_active_devices": "Brak aktywnych urządzeń Spotify.",
+        "no_active_device": "Brak urządzenia Spotify",
         "Playback has been paused.": "Odtwarzanie zostało wstrzymane.",
         "check_schedule": "Sprawdź poniższy harmonogram na dziś i dostosuj go w razie potrzeby. Skrypt zostanie uruchomiony za 5 sekund.\n",
         "out_of_schedule": "Czas poza harmonogramem. Odtwarzanie nie zostało zatrzymane.",
@@ -107,7 +107,7 @@ translations = {
         "no_playing_playlist": "You are not playing a playlist right now.",
         "failed_to_fetch_data": "Failed to fetch data.",
         "no_playback": "Nothing is playing right now.",
-        "no_active_devices": "No active Spotify devices.",
+        "no_active_device": "No Spotify device",
         "check_schedule": "Check the schedule for today below and adjust it if needed. The script will run in 5 seconds.\n",
         "out_of_schedule": "Out of schedule. Playback has not been stopped.",
         "out_of_schedule_paused": "Out of schedule. Playback is stopped."
