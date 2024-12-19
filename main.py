@@ -18,7 +18,7 @@ import platform
 from translations import translations
 import os
 
-version="1.4.2"
+version="1.5.0"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
@@ -81,7 +81,7 @@ WEEKDAYS_ONLY = config['WEEKDAYS_ONLY']
 LANG = config['LANG']
 PLAYLIST_ID = None
 
-REDIRECT_URI = "http://localhost:8080"
+REDIRECT_URI = "http://localhost:23918"
 SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private"
 PROCNAME = "spotify.exe"
 
@@ -889,7 +889,8 @@ def checklist():
         devices = sp.devices()
         found_device = _("Device Not Found")
         volume = _("Check Manually")
-        proces = _("Spotify Is Turned Off")
+        proces = ''
+
         if devices["devices"]:
             for device in devices["devices"]:
                 if DEVICE_NAME in device["name"].upper():
@@ -905,12 +906,13 @@ def checklist():
             playlist = _("Playlist Set", playlist_id=PLAYLIST_ID)
         else:
             playlist = _("Playlist Missing")
-
-        for proc in psutil.process_iter():
-            if PROCNAME.lower() in proc.name().lower():
-                if (proc.pid!=current_pid) or (proc.pid!=parent_pid):
-                    proces = _("Spotify Running")
-
+        if os.name == 'nt':
+            proces = (_("Spotify Is Turned Off")+"\n")
+            for proc in psutil.process_iter():
+                if PROCNAME.lower() in proc.name().lower():
+                    if (proc.pid!=current_pid) or (proc.pid!=parent_pid):
+                        proces = (_("Spotify Running")+"\n")
+        
         checklistvar.set(_("Checklist", process=proces, device=found_device, volume=volume, playlist=playlist))
 
     except Exception as ex:
