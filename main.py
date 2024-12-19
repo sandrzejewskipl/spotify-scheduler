@@ -18,7 +18,7 @@ import platform
 from translations import translations
 import os
 
-version="1.4.0"
+version="1.4.1"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
@@ -384,21 +384,22 @@ def get_playlist_for_schedule(key=None):
                     if start_time <= now <= end_time:
                         key=line
                         break
-            try:
-                with open(schedule_playlists_file, "r") as file:
-                    data = json.load(file)
-                    key = key.strip()
-                    if key in data:
-                        return data[key]
+            if key:
+                try:
+                    with open(schedule_playlists_file, "r") as file:
+                        data = json.load(file)
+                        key = key.strip()
+                        if key in data:
+                            return data[key]
 
-                    elif "default" in data:
-                        return data["default"]
-                    else:
-                        return None
-            except FileNotFoundError:
-                generate_schedule_playlists()
-            except Exception as e:
-                timestamped_print(f"Error during loading playlists file: {e}")
+                        elif "default" in data:
+                            return data["default"]
+                        else:
+                            return None
+                except FileNotFoundError:
+                    generate_schedule_playlists()
+                except Exception as e:
+                    timestamped_print(f"Error during loading playlists file: {e}")
     except Exception as e:
         timestamped_print(f"Error during reading schedule: {e}")
     return False
@@ -1055,9 +1056,10 @@ def play_music():
 
         if target_device:
             PLAYLIST_ID=get_playlist_for_schedule()
-            sp.start_playback(device_id=target_device, context_uri=f"spotify:playlist:{PLAYLIST_ID}")
-            last_playlist=PLAYLIST_ID
-            timestamped_print(f"Music playing on device {target_device}.")
+            if PLAYLIST_ID:
+                sp.start_playback(device_id=target_device, context_uri=f"spotify:playlist:{PLAYLIST_ID}")
+                last_playlist=PLAYLIST_ID
+                timestamped_print(f"Music playing on device {target_device}.")
         else:
             timestamped_print(f"No device found with name {DEVICE_NAME}.")
 
@@ -1093,7 +1095,6 @@ def spotify_main():
                 current_playback = sp.current_playback()
                 PLAYLIST_ID=get_playlist_for_schedule()
                 if (not current_playback) or (not current_playback["is_playing"]) or (not last_playlist==PLAYLIST_ID):
-
                     if PLAYLIST_ID:
                         play_music()
                     else:
