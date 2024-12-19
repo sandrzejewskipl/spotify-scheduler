@@ -18,7 +18,7 @@ import platform
 from translations import translations
 import os
 
-version="1.4.1"
+version="1.4.2"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
@@ -543,10 +543,22 @@ def run_spotify():
                 timestamped_print("Spotify not found.")
         except Exception as e:
             timestamped_print(f"Error during launching Spotify: {e}")
+            
+def spotify_button_check():
+    if os.name == 'nt':
+        try:
+            result = subprocess.run(["where", "spotify"], capture_output=True, text=True, check=True)
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            userdir = os.path.join(os.environ['USERPROFILE'], 'AppData\\Roaming\\Spotify\\Spotify.exe')
+            if os.path.exists(userdir):
+                return True
+    timestamped_print("Spotify installation not found, button will not be rendered.")
+    return False
 
-# Spotify button
-spotify_button = ttk.Button(control_frame, text=_("Run Spotify"), command=run_spotify)
-spotify_button.pack(side="left",)
+if spotify_button_check():
+    spotify_button = ttk.Button(control_frame, text=_("Run Spotify"), command=run_spotify)
+    spotify_button.pack(side="left")
 
 device_label = ttk.Label(control_frame, text=platform.node(), font=("Arial", 10))
 device_label.pack(side="left", padx=10)
