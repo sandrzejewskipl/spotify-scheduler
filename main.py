@@ -66,16 +66,16 @@ def load_config():
             "CLIENT_ID": "",
             "CLIENT_SECRET": "",
             "DEVICE_NAME": "",
-            "KILLSWITCH_ON": True,
-            "WEEKDAYS_ONLY": True,
+            "KILLSWITCH_ON": False,
+            "WEEKDAYS_ONLY": False,
             "AUTO_SPOTIFY": False
         }
     for key in required_keys:
         if key not in config:
             if key == "KILLSWITCH_ON":
-                config[key] = True 
+                config[key] = False 
             elif key == "WEEKDAYS_ONLY":
-                config[key] = True
+                config[key] = False
             elif key == "AUTO_SPOTIFY":
                 config[key] = False
             else:

@@ -72,11 +72,11 @@ You can fully configure your settings and set your schedule using the GUI. If yo
 
 <b>DEVICE NAME</b> - name (or part of it) of the device in Spotify API that will play music. You can find the device name in the bottom-left corner or check the list of devices in the Settings tab. It defaults to host name.
 
-<b>Play music only on weekdays</b> - Music will only be played from Monday to Friday.
+<b>Play music only on weekdays</b> - Music will only be played from Monday to Friday. <b>Default: </b>Off
 
-<b>Killswitch</b> - feature that kills the Spotify process(es) when an error with API occurs when pausing the playback. It prevents playing music out of schedule. (only on Windows)
+<b>Killswitch</b> - feature that kills the Spotify process(es) when an error with API occurs when pausing the playback. It prevents playing music out of schedule. (only on Windows) <b>Default: </b>Off
 
-<b>Auto-lunch spotify</b> - feature that automatically launches Spotify if the device is not detected on the devices list. (only on Windows)
+<b>Auto-lunch spotify</b> - feature that automatically launches Spotify if the device is not detected on the devices list. (only on Windows) <b>Default: </b>Off
 
 
 ## After changing the language, run the script again.
