@@ -18,7 +18,7 @@ import platform
 from translations import translations
 import os
 
-version="1.5.0"
+version="1.5.1"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
@@ -50,22 +50,45 @@ def bundle_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
+required_keys = [
+    "LANG", "CLIENT_ID", "CLIENT_SECRET", "DEVICE_NAME", 
+    "KILLSWITCH_ON", "WEEKDAYS_ONLY", "AUTO_SPOTIFY"
+]
+
 def load_config():
+    global required_keys
     try:
         with open(config_file, "r") as f:
-            return json.load(f)
+            config = json.load(f)
     except FileNotFoundError:
-        default = """{
-    "LANG": "en",
-    "CLIENT_ID": "",
-    "CLIENT_SECRET": "",
-    "PLAYLIST_ID": "",
-    "DEVICE_NAME": "DESKTOP",
-    "KILLSWITCH_ON": true,
-    "WEEKDAYS_ONLY": true
-}"""
-        with open(config_file, "w") as schedule_file:
-            schedule_file.write(default)
+        config = {
+            "LANG": "en",
+            "CLIENT_ID": "",
+            "CLIENT_SECRET": "",
+            "DEVICE_NAME": "",
+            "KILLSWITCH_ON": True,
+            "WEEKDAYS_ONLY": True,
+            "AUTO_SPOTIFY": False
+        }
+    for key in required_keys:
+        if key not in config:
+            if key == "KILLSWITCH_ON":
+                config[key] = True 
+            elif key == "WEEKDAYS_ONLY":
+                config[key] = True
+            elif key == "AUTO_SPOTIFY":
+                config[key] = False
+            else:
+                config[key] = "" 
+            timestamped_print(f"Missing key '{key}' set to default value.")
+    try:
+        config["DEVICE_NAME"] = platform.node()
+    except Exception as e:
+        pass
+
+    with open(config_file, "w") as file:
+        json.dump(config, file, indent=4)
+    return config
 load_config()
 
 
@@ -78,6 +101,7 @@ CLIENT_SECRET = config['CLIENT_SECRET']
 DEVICE_NAME = config['DEVICE_NAME']
 KILLSWITCH_ON = config['KILLSWITCH_ON']
 WEEKDAYS_ONLY = config['WEEKDAYS_ONLY']
+AUTO_SPOTIFY = config['AUTO_SPOTIFY']
 LANG = config['LANG']
 PLAYLIST_ID = None
 
@@ -111,13 +135,14 @@ def initialize_sp():
             timestamped_print(f"Error during spotipy initalization: {e}")
 
 def save_settings():
-    global config, CLIENT_ID, CLIENT_SECRET, KILLSWITCH_ON, WEEKDAYS_ONLY, PLAYLIST_ID, DEVICE_NAME, LANG, setting_entries
+    global config, CLIENT_ID, CLIENT_SECRET, KILLSWITCH_ON, WEEKDAYS_ONLY, PLAYLIST_ID, DEVICE_NAME, LANG, setting_entries, AUTO_SPOTIFY
     config['CLIENT_ID'] = setting_entries['CLIENT_ID'].get()
     config['CLIENT_SECRET'] = setting_entries['CLIENT_SECRET'].get()
     config['DEVICE_NAME'] = setting_entries['DEVICE_NAME'].get()
     config['LANG'] = language_var.get()
     config['KILLSWITCH_ON'] = setting_vars['KILLSWITCH_ON'].get()
     config['WEEKDAYS_ONLY'] = setting_vars['WEEKDAYS_ONLY'].get() 
+    config['AUTO_SPOTIFY'] = setting_vars['AUTO_SPOTIFY'].get() 
 
 
     save_config(config)
@@ -128,6 +153,7 @@ def save_settings():
     DEVICE_NAME = config['DEVICE_NAME']
     KILLSWITCH_ON = config['KILLSWITCH_ON']
     WEEKDAYS_ONLY = config['WEEKDAYS_ONLY']
+    AUTO_SPOTIFY = config['AUTO_SPOTIFY']
     LANG = config['LANG']
     initialize_sp()
 
@@ -241,24 +267,27 @@ ttk.Label(settings_frame, text="DEVICE NAME").grid(row=3, column=0, padx=10, pad
 setting_entries['DEVICE_NAME'] = ttk.Entry(settings_frame, width=50)
 setting_entries['DEVICE_NAME'].grid(row=3, column=1, padx=10, pady=5)
 
-# KILLSWITCH_ON and WEEKDAYS_ONLY
+# SWITCHES
 setting_vars['KILLSWITCH_ON'] = tk.BooleanVar(value=config.get('KILLSWITCH_ON', False))
-ttk.Checkbutton(settings_frame, text=_("Killswitch"), variable=setting_vars['KILLSWITCH_ON']).grid(row=4, columnspan=2, pady=5)
+ttk.Checkbutton(settings_frame, text=_("Killswitch"), variable=setting_vars['KILLSWITCH_ON']).grid(row=5, columnspan=2, pady=5,padx=5)
 
 setting_vars['WEEKDAYS_ONLY'] = tk.BooleanVar(value=config.get('WEEKDAYS_ONLY', False))
-ttk.Checkbutton(settings_frame, text=_("Weekdays Only"), variable=setting_vars['WEEKDAYS_ONLY']).grid(row=5, columnspan=2, pady=5)
+ttk.Checkbutton(settings_frame, text=_("Weekdays Only"), variable=setting_vars['WEEKDAYS_ONLY']).grid(row=4, columnspan=2, pady=5,padx=5)
+
+setting_vars['AUTO_SPOTIFY'] = tk.BooleanVar(value=config.get('AUTO_SPOTIFY', False))
+ttk.Checkbutton(settings_frame, text=_("Auto Spotify"), variable=setting_vars['AUTO_SPOTIFY']).grid(row=6, columnspan=2, pady=5,padx=5)
 
 save_btn = ttk.Button(settings_frame, text=_("Save Settings"), command=save_settings)
-save_btn.grid(row=6, columnspan=2, pady=20)
+save_btn.grid(row=7, columnspan=2, pady=20)
 
 text_label = ttk.Label(settings_frame, text="EN: After changing the language, restart the application to apply the changes. \nPL: Po zmianie języka zrestartuj aplikację, aby zastosować zmiany.", foreground="green")
-text_label.grid(row=7, columnspan=2, pady=10)
+text_label.grid(row=8, columnspan=2, pady=10)
 
 devices_list = tk.StringVar()
 devices_list.set("")
 
 devices_label = ttk.Label(settings_frame, textvariable=devices_list, wraplength=500, anchor="w")
-devices_label.place(x=10, y=300)
+devices_label.place(x=10, y=350)
 
 
 
@@ -885,8 +914,13 @@ now_playing_image_label = ttk.Label(now_playing_frame)
 now_playing_image_label.pack(padx=10, pady=10)
 
 def checklist():
+    global global_devices
     try:
-        devices = sp.devices()
+        #limit spotify api calls
+        if global_devices:
+            devices = global_devices
+        else:
+            devices = sp.devices()
         found_device = _("Device Not Found")
         volume = _("Check Manually")
         proces = ''
@@ -923,13 +957,21 @@ def checklist():
 
 
 lastfetch=''
-
+lastresponse=''
 def update_now_playing_info():
-    global lastfetch, playlist_name
+    global lastfetch, playlist_name, lastresponse
     
     try:
-        current_playback = sp.current_playback()
-        devices = sp.devices()
+        # LIMIT SPOTIFY API CALLS
+        if global_playback:
+            current_playback = global_playback
+        else:
+            current_playback = sp.current_playback()
+
+        if global_devices:
+            devices = global_devices
+        else:
+            devices = sp.devices()
 
         # Get active device
         target_device_name = _("No device")
@@ -981,27 +1023,30 @@ def update_now_playing_info():
             )
 
             # Get and display cover photo
-            album_images = track["album"].get("images", [])
-            if album_images:
-                response = requests.get(album_images[0]["url"])
-                if response.status_code == 200:
-                    img_data = BytesIO(response.content)
-                    img = Image.open(img_data)
-                    img = img.resize((200, 200))
-                    now_playing_img = ImageTk.PhotoImage(img)
+            if lastresponse!=track["album"]:
+                album_images = track["album"].get("images", [])
+                if album_images:
+                    response = requests.get(album_images[0]["url"])
+                    if response.status_code == 200:
+                        img_data = BytesIO(response.content)
+                        img = Image.open(img_data)
+                        img = img.resize((200, 200))
+                        now_playing_img = ImageTk.PhotoImage(img)
+                        lastresponse=track["album"]
 
-                    now_playing_image_label.config(image=now_playing_img)
-                    now_playing_image_label.image = now_playing_img 
+                        now_playing_image_label.config(image=now_playing_img)
+                        now_playing_image_label.image = now_playing_img 
 
         else:
             now_playing_label.config(text=_("no_playback"))
+            now_playing_image_label.image=None
 
     except Exception as e:
         now_playing_label.config(text=f"Error: {str(e)}")
 
     checklist()
 
-    root.after(5000, update_now_playing_info)  # Refresh every 5 seconds
+    root.after(2500, update_now_playing_info)  # Refresh
 
 # Pause music and stop automation button
 pause_play_btn = ttk.Button(now_playing_frame, text=_("Pause music and stop automation"), command=pauseandauto)
@@ -1054,11 +1099,19 @@ def is_within_schedule(schedule_file=schedule_file):
 
 last_playlist=''
 def play_music():
-    global last_playlist
+    global last_playlist, global_devices, last_spotify_run
     try:
-        devices = sp.devices()
+        if global_devices:
+            devices = global_devices
+        else:
+            devices = sp.devices()
+
         if not devices["devices"]:
             status.set(_( "no_active_devices"))
+            if spotify_button_check() and AUTO_SPOTIFY and not last_spotify_run:
+                timestamped_print("Trying to run spotify.")
+                run_spotify()
+                last_spotify_run = True
             return
 
         target_device = None
@@ -1074,18 +1127,27 @@ def play_music():
                 sp.start_playback(device_id=target_device, context_uri=f"spotify:playlist:{PLAYLIST_ID}")
                 last_playlist=PLAYLIST_ID
                 timestamped_print(f"Music playing on device {target_device}.")
+                last_spotify_run=False
         else:
             timestamped_print(f"No device found with name {DEVICE_NAME}.")
+            if spotify_button_check() and AUTO_SPOTIFY and not last_spotify_run:
+                timestamped_print("Trying to run spotify.")
+                run_spotify()
+                last_spotify_run = True
+
 
     except Exception as ex:
         timestamped_print(f"Error while playing: {ex}")
 
+last_spotify_run=False
 def pause_music(retries=3, delay=2):
-    global last_endtime
+    global last_endtime, global_playback, last_spotify_run
+    last_spotify_run = False
     attempt = 0
     while attempt < retries:
         try:
             current_playback = sp.current_playback()
+            global_playback = current_playback
             if current_playback and current_playback["is_playing"]:
                 sp.pause_playback()
                 delay=""
@@ -1101,12 +1163,19 @@ def pause_music(retries=3, delay=2):
     timestamped_print("Failed to pause playback after multiple attempts.")
     killswitch()
 
+global_playback = None
+global_devices = None
 def spotify_main():
-    global last_playlist
+    global last_playlist, global_playback, global_devices
     if not is_paused: 
         if is_within_schedule():
             try:
                 current_playback = sp.current_playback()
+                devices = sp.devices()
+
+                global_playback = current_playback
+                global_devices = devices
+
                 PLAYLIST_ID=get_playlist_for_schedule()
                 if (not current_playback) or (not current_playback["is_playing"]) or (not last_playlist==PLAYLIST_ID):
                     if PLAYLIST_ID:
@@ -1120,6 +1189,10 @@ def spotify_main():
         else:
             status.set(_("out_of_schedule"))
             pause_music()
+            try:
+                global_devices = sp.devices()
+            except Exception:
+                pass
 
 # Disable quickedit mode on Windows terminal.
 def disable_quickedit():
