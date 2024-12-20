@@ -1061,7 +1061,8 @@ def update_now_playing_info():
             now_playing_image_label.image=None
 
     except Exception as e:
-        now_playing_label.config(text=f"Error: {str(e)}")
+        timestamped_print(f"Error during updating now playing info: {error(e)}")
+        now_playing_label.config(text=_("failed_to_fetch_data"))
 
     checklist()
 
