@@ -26,7 +26,7 @@ On Playlist tab you can schedule playlist for certain time. If no time is select
 
 - Go to https://developer.spotify.com/dashboard and create a new app.<br>
 - Set the Redirect URI to: `http://localhost:23918`.<br>
-- Select Web API and Web Playback SDK.<br>
+- Select Web API<br>
 
 Download an `.exe` file from the latest release <a href="https://github.com/sandrzejewskipl/spotify-scheduler/releases">here</a> and launch it.
 
@@ -53,7 +53,7 @@ Make sure you have <b>Python3-tk</b> installed.
 
 - Go to https://developer.spotify.com/dashboard and create a new app.<br>
 - Set the Redirect URI to: `http://localhost:23918`.<br>
-- Select Web API and Web Playback SDK.<br>
+- Select Web API<br>
 
 Run this command from the command line in the same directory.
 
