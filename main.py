@@ -75,6 +75,10 @@ def load_config():
             "WEEKDAYS_ONLY": False,
             "AUTO_SPOTIFY": False
         }
+        try:
+            config["DEVICE_NAME"] = platform.node()
+        except Exception as e:
+            pass
     for key in required_keys:
         if key not in config:
             if key == "KILLSWITCH_ON":
@@ -86,10 +90,6 @@ def load_config():
             else:
                 config[key] = "" 
             timestamped_print(f"Missing key '{key}' set to default value.")
-    try:
-        config["DEVICE_NAME"] = platform.node()
-    except Exception as e:
-        pass
 
     with open(config_file, "w") as file:
         json.dump(config, file, indent=4)
@@ -589,7 +589,6 @@ def spotify_button_check():
             userdir = os.path.join(os.environ['USERPROFILE'], 'AppData\\Roaming\\Spotify\\Spotify.exe')
             if os.path.exists(userdir):
                 return True
-    timestamped_print("Spotify installation not found, button will not be rendered.")
     return False
 
 if spotify_button_check():
