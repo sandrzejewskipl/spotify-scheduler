@@ -548,8 +548,8 @@ def toggle_pause():
     status = _( "Paused") if is_paused else _( "Running")
     timestamped_print(f"App state: {status}")
     pause_button.config(text=_("Resume Automation") if is_paused else _("Pause Automation"))
-    if not is_paused:
-        pause_play_btn.config(text=_("Pause music and stop automation"))
+    pause_play_btn.config(text=_("Pause music and stop automation") if not is_paused else _("Resume Automation"))
+
 
 def pauseandauto():
     global is_paused
@@ -784,7 +784,7 @@ def get_playlist_info():
             if images:
                 playlist_info["image_url"] = images[0]["url"]
 
-            return f"Playlist: {playlist_info['name']} Owner: {playlist_info['owner']}"
+            return f"Playlist: {playlist_info['name']}, Owner: {playlist_info['owner']}"
         except Exception as e:
             timestamped_print(f"Failed to retrieve playlist {PLAYLIST_ID} data: {error(e)}")
             return ""
