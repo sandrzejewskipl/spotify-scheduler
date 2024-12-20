@@ -688,7 +688,11 @@ def update_view_for_time(*args):
     display_playlist_info()
 
 
-
+playlist_info = {
+    "name": "",
+    "owner": "",
+    "image_url": ""
+}
 # Change playlist to selected time
 def change_playlist():
     global playlist_info
@@ -711,7 +715,7 @@ def change_playlist():
         schedule_playlists[current_time] = PLAYLIST_ID
         save_schedule_playlists()
 
-        timestamped_print(f"Playlist for {current_time} updated to {user_input}.")
+        timestamped_print(f"Playlist for {current_time} updated to {PLAYLIST_ID}.")
         refresh_playlist_gui(current_time)
         spotify_main()
     else:
