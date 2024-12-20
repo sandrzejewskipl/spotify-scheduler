@@ -33,6 +33,10 @@ def timestamped_print(message):
     current_time = datetime.now().isoformat(sep=" ", timespec="seconds")
     print(f"{current_time} | {message}")
  
+def error(e):
+    string=f'\n\033[91m{e}\033[0m'
+    return string
+
 # Check if the folder exists, if not, create it
 if not os.path.exists("spotify-scheduler_data"):
     os.makedirs("spotify-scheduler_data")
@@ -135,7 +139,7 @@ def initialize_sp():
             sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=CLIENT_ID,client_secret=CLIENT_SECRET,redirect_uri=REDIRECT_URI,scope=SCOPE))
             sp_anon = spotipy.Spotify(auth_manager=SpotifyAnon())
         except Exception as e:
-            timestamped_print(f"Error during spotipy initalization: {e}")
+            timestamped_print(f"Error during spotipy initalization: {error(e)}")
 
 def save_settings():
     global config, CLIENT_ID, CLIENT_SECRET, KILLSWITCH_ON, WEEKDAYS_ONLY, PLAYLIST_ID, DEVICE_NAME, LANG, setting_entries, AUTO_SPOTIFY
@@ -196,7 +200,7 @@ def open_link(url):
         import webbrowser
         webbrowser.open(url)
     except Exception as e:
-        print(f"Failed to open link: {e}")    
+        print(f"Failed to open link: {error(e)}")    
 try:
     icon_image = Image.open(bundle_path("icon.ico"))
     icon_photo = ImageTk.PhotoImage(icon_image)
@@ -204,7 +208,7 @@ try:
     icon_label.image = icon_photo 
     icon_label.pack(pady=10)
 except Exception as e:
-    print(f"Failed to load icon: {e}")    
+    print(f"Failed to load icon: {error(e)}")    
 
 info_text = tk.Text(info_frame, wrap="word", height=10, width=70, font=("Arial", 12))
 info_text.pack(expand=True, pady=20, padx=20)
@@ -326,14 +330,14 @@ def load_schedule_to_table():
     except FileNotFoundError:
         timestamped_print("The file schedule.txt does not exist.")
     except Exception as e:
-        timestamped_print(f"Error during loading schedule: {e}")
+        timestamped_print(f"Error during loading schedule: {error(e)}")
 def save_default_schedule():
     try:
         shutil.copy(schedule_file, default_schedule_file)
         load_schedule_to_table()
         timestamped_print("Schedule loaded into table.")
     except Exception as e:
-        timestamped_print(f"Error during saving schedule: {e}")
+        timestamped_print(f"Error during saving schedule: {error(e)}")
         
 def replace_schedule_with_default():
     try:
@@ -344,7 +348,7 @@ def replace_schedule_with_default():
         refresh_playlist_gui()
 
     except Exception as e:
-        timestamped_print(f"Error while changing schedule: {e}")
+        timestamped_print(f"Error while changing schedule: {error(e)}")
 
 # Create default schedule
 def generate_default(force=True):
@@ -384,7 +388,7 @@ def save_schedule_from_table():
         load_schedule_to_table()
         refresh_playlist_gui()
     except Exception as e:
-        timestamped_print(f"Error during saving schedule: {e}")
+        timestamped_print(f"Error during saving schedule: {error(e)}")
 def generate_schedule_playlists():
     try:
         new_data={}
@@ -401,7 +405,7 @@ def generate_schedule_playlists():
             with open(schedule_playlists_file, "w") as json_file:
                 json.dump(new_data, json_file, indent=4)
     except Exception as e:
-        timestamped_print(f"Error during saving playlists file: {e}")
+        timestamped_print(f"Error during saving playlists file: {error(e)}")
 def get_playlist_for_schedule(key=None):
     global last_schedule, schedule_playlists_file
     try:
@@ -431,9 +435,9 @@ def get_playlist_for_schedule(key=None):
                 except FileNotFoundError:
                     generate_schedule_playlists()
                 except Exception as e:
-                    timestamped_print(f"Error during loading playlists file: {e}")
+                    timestamped_print(f"Error during loading playlists file: {error(e)}")
     except Exception as e:
-        timestamped_print(f"Error during reading schedule: {e}")
+        timestamped_print(f"Error during reading schedule: {error(e)}")
     return False
 
 def is_valid_time_format(time_str):
@@ -574,7 +578,7 @@ def run_spotify():
             else:
                 timestamped_print("Spotify not found.")
         except Exception as e:
-            timestamped_print(f"Error during launching Spotify: {e}")
+            timestamped_print(f"Error during launching Spotify: {error(e)}")
             
 def spotify_button_check():
     if os.name == 'nt':
@@ -629,7 +633,7 @@ def save_schedule_playlists():
             json.dump(schedule_playlists, file, indent=4)
         timestamped_print("Schedule playlists saved successfully.")
     except Exception as e:
-        timestamped_print(f"Error saving schedule playlists: {e}")
+        timestamped_print(f"Error saving schedule playlists: {error(e)}")
 
 # Load default scheduled playlists
 schedule_playlists = load_schedule_playlists()
@@ -723,14 +727,15 @@ def change_playlist():
 
 def remove_playlist(user_input=None):
     global schedule_playlists
+    current_time = selected_time.get().split("(")[0].rstrip(" ")
     if user_input==None:
-        user_input = selected_time.get().split("(")[0].rstrip(" ")  # Selected time
+        user_input = current_time  # Selected time
     if user_input in schedule_playlists:
         del schedule_playlists[user_input]
         save_schedule_playlists()
         timestamped_print(f"Playlist for {user_input} has been removed.")
 
-        refresh_playlist_gui()
+        refresh_playlist_gui(current_time)
         spotify_main()
     else:
         timestamped_print(f"No playlist found for {user_input}.")
@@ -779,9 +784,10 @@ def get_playlist_info():
             if images:
                 playlist_info["image_url"] = images[0]["url"]
 
-            timestamped_print(f"Playlist: {playlist_info['name']} Owner: {playlist_info['owner']}")
+            return f"Playlist: {playlist_info['name']} Owner: {playlist_info['owner']}"
         except Exception as e:
-            timestamped_print(f"Failed to retrieve playlist {PLAYLIST_ID} data: {e}")
+            timestamped_print(f"Failed to retrieve playlist {PLAYLIST_ID} data: {error(e)}")
+            return ""
 
 
 # Playlist container
@@ -858,9 +864,8 @@ def fetch_user_playlists():
                 playlist_name = playlist['name']
                 playlist_id = playlist['id']
                 playlist_table.insert("", "end", values=(playlist_name, playlist_id))
-        timestamped_print("User's playlist downloaded.")
     except Exception as e:
-        timestamped_print(f"Error downloading user playlists: {e}")
+        timestamped_print(f"Error downloading user playlists: {error(e)}")
 
 # Select playlist from list
 def select_playlist(event):
@@ -873,7 +878,7 @@ def select_playlist(event):
         playlist_entry.delete(0, tk.END)  # clear input
         playlist_entry.insert(0, playlist_id)  # put id into input
     except Exception as e:
-        timestamped_print(f"Error selecting playlist: {e}")
+        timestamped_print(f"Error selecting playlist: {error(e)}")
 
 # bind click
 playlist_table.bind("<ButtonRelease-1>", select_playlist)
@@ -960,10 +965,12 @@ def checklist():
     
 
 
-lastfetch=''
-lastresponse=''
+lastfetch=None
+lastresponse=None
+lasttype=None
+playlist_info_str=None
 def update_now_playing_info():
-    global lastfetch, playlist_name, lastresponse
+    global lastfetch, playlist_name, lastresponse, playlist_info_str
     
     try:
         # LIMIT SPOTIFY API CALLS
@@ -998,23 +1005,31 @@ def update_now_playing_info():
             is_playing = current_playback.get("is_playing", False)
             playback_state = _("Playing") if is_playing else _("Paused")
 
-            playing_playlist = ''
+            playing_playlist = None
+            failed=True
             try:
                 context = current_playback.get("context", {})
                 playing_playlist = context.get("uri", "").split(":")[-1]
-            except Exception as e:
-                playing_playlist = _("no_playing_playlist")
+            except Exception:
+                pass
+            current_track = current_playback['item']
+            album = current_track['album']
             if lastfetch != playing_playlist:
-                try:
-                    lastfetch = playing_playlist
-                    playlist_details = get_spotify_playlist(playing_playlist)
-                    if playlist_details:
-                        playlist_name = playlist_details.get("name", "-")
-                except Exception as e:
-                    playlist_name = _("failed_to_fetch_data")
-                
-            playlist_info_str = f"{_('Playlist')}: {playlist_name}"
+                if playing_playlist:
+                    try:
+                        lastfetch = playing_playlist
+                        playlist_details = get_spotify_playlist(playing_playlist)
+                        if playlist_details:
+                            playlist_name = playlist_details.get("name", "-")
+                            failed=False
+                    except Exception as e:
+                        playlist_name = _("failed_to_fetch_data")
+                    playlist_info_str = f"{_('Playlist')}: {playlist_name}"
+                if failed:
+                    playlist_info_str = f"{_('Album')}: {album['name']}"
             
+            if not playlist_info_str:
+                playlist_info_str=_("failed_to_fetch_data")
             # Now playing text
             now_playing_label.config(
                 text=(
@@ -1024,7 +1039,7 @@ def update_now_playing_info():
             f"{_('Device')}: {target_device_name}\n\n"
             f"{_('State')}: {playback_state}\n"
             f"{_('Time slot')}: {last_schedule.strip()}")
-            )
+            ,justify='center')
 
             # Get and display cover photo
             if lastresponse!=track["album"]:
@@ -1098,7 +1113,7 @@ def is_within_schedule(schedule_file=schedule_file):
         timestamped_print(f"The file schedule.txt does not exist, it will be created now from default.")
         replace_schedule_with_default()
     except Exception as e:
-        timestamped_print(f"Error during reading schedule: {e}")
+        timestamped_print(f"Error during reading schedule: {error(e)}")
     return False
 
 last_playlist=''
@@ -1122,7 +1137,6 @@ def play_music():
         for device in devices["devices"]:
             if DEVICE_NAME in device["name"].upper():
                 target_device = device["id"]
-                timestamped_print(f"Found device: {device['name']}")
                 break
 
         if target_device:
@@ -1130,7 +1144,7 @@ def play_music():
             if PLAYLIST_ID:
                 sp.start_playback(device_id=target_device, context_uri=f"spotify:playlist:{PLAYLIST_ID}")
                 last_playlist=PLAYLIST_ID
-                timestamped_print(f"Music playing on device {target_device}.")
+                timestamped_print(f"Music playing on {device['name']}. {get_playlist_info()}")
                 last_spotify_run=False
         else:
             status.set(_( "no_active_device"))
@@ -1150,8 +1164,10 @@ def pause_music(retries=3, delay=2):
     attempt = 0
     while attempt < retries:
         try:
+            took_time=datetime.now()
             current_playback = sp.current_playback()
             global_playback = current_playback
+
             if current_playback and current_playback["is_playing"]:
                 sp.pause_playback()
                 delay=""
@@ -1162,7 +1178,7 @@ def pause_music(retries=3, delay=2):
             return  # Zakończ funkcję, jeśli się udało
         except Exception as e:
             attempt += 1
-            timestamped_print(f"Error occurred, retrying... ({attempt}/{retries}) {e}")
+            timestamped_print(f"Error occurred, retrying... ({attempt}/{retries}, took {round(((datetime.now()-took_time).total_seconds()),2)}s) {error(e)}")
             t.sleep(delay)
     timestamped_print("Failed to pause playback after multiple attempts.")
     killswitch()
@@ -1175,13 +1191,26 @@ def spotify_main():
         if is_within_schedule():
             try:
                 current_playback = sp.current_playback()
-                devices = sp.devices()
-
                 global_playback = current_playback
-                global_devices = devices
 
+                devices=None
+                try:
+                    devices = sp.devices()
+                    global_devices = devices
+                except Exception:
+                    pass
+
+                target_device = None
+                active_device = None
+                if devices and "devices" in devices:
+                    for device in devices["devices"]:
+                        if DEVICE_NAME in device["name"].upper():
+                            target_device = device["id"]
+                        if device.get("is_active"):
+                            active_device = device["id"]
+                    
                 PLAYLIST_ID=get_playlist_for_schedule()
-                if (not current_playback) or (not current_playback["is_playing"]) or (not last_playlist==PLAYLIST_ID):
+                if (not current_playback) or (not current_playback["is_playing"]) or (not last_playlist==PLAYLIST_ID) or (target_device!=active_device):
                     if PLAYLIST_ID:
                         play_music()
                     else:
@@ -1206,7 +1235,7 @@ def disable_quickedit():
             kernel32 = windll.kernel32
             kernel32.SetConsoleMode(kernel32.GetStdHandle(-10), 128)
         except Exception as e:
-            timestamped_print(f'Cannot disable QuickEdit mode: {e}')
+            timestamped_print(f'Cannot disable QuickEdit mode: {error(e)}')
 
 def main():
     global CLIENT_ID, CLIENT_SECRET, config
@@ -1243,7 +1272,7 @@ def main():
             content = file.read() 
             print(f'{content}\n')
     except Exception as e:
-        timestamped_print(f"Error during reading schedule: {e}")            
+        timestamped_print(f"Error during reading schedule: {error(e)}")            
     t.sleep(5)   
     if os.name == 'nt':
         root.iconbitmap(bundle_path("icon.ico"))
@@ -1251,15 +1280,17 @@ def main():
     initialize_sp()
     update_now_playing_info()
     load_schedule_to_table()
-    fetch_user_playlists()
-    pause_music()
-    
     
     def loop():
         spotify_main()
         root.after(2500, loop)  # Loop
 
+    def fetching_loop():
+        fetch_user_playlists()
+        root.after(60000, fetching_loop)
+
     loop()
+    fetching_loop()
 
 if __name__ == "__main__":
     root.after(0, main)
