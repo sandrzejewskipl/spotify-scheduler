@@ -17,6 +17,7 @@ import subprocess
 import platform
 from translations import translations
 import os
+from spotipy_anon import SpotifyAnon
 
 version="1.5.2"
 config_file="config.json"
@@ -125,12 +126,13 @@ def refresh_settings():
             var.set(config.get(key, False))
 
 def initialize_sp():
-    global sp
+    global sp, sp_anon
     sp=None
     if CLIENT_ID!="" and CLIENT_SECRET!="":
 
         try:
             sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=CLIENT_ID,client_secret=CLIENT_SECRET,redirect_uri=REDIRECT_URI,scope=SCOPE))
+            sp_anon = spotipy.Spotify(auth_manager=SpotifyAnon())
         except Exception as e:
             timestamped_print(f"Error during spotipy initalization: {e}")
 
@@ -688,17 +690,15 @@ def update_view_for_time(*args):
 
 # Change playlist to selected time
 def change_playlist():
-    global PLAYLIST_ID
     global playlist_info
     user_input = playlist_entry.get().strip()
     if user_input != "":
         current_time = selected_time.get().split("(")[0].rstrip(" ") 
-        schedule_playlists[current_time] = user_input
-        save_schedule_playlists()
-        timestamped_print(f"Playlist for {current_time} updated to {user_input}.")
 
         playlist_entry.delete(0, tk.END)
+        PLAYLIST_ID = None
         PLAYLIST_ID = extract_playlist_id(user_input) if "open.spotify.com" in user_input else user_input
+
         if not PLAYLIST_ID:
             timestamped_print("Failed to extract playlist ID.")
             return
@@ -706,15 +706,11 @@ def change_playlist():
             "name": _("The playlist has been changed but its data could not be retrieved."),
             "image_url": ""
         }
-        try:
-            with open(config_file, "r") as f:
-                config = json.load(f)
-        except FileNotFoundError:
-            config = {}
+        
+        schedule_playlists[current_time] = PLAYLIST_ID
+        save_schedule_playlists()
 
-        # Save to config.json
-        with open(config_file, "w") as f:
-            json.dump(config, f, indent=4)
+        timestamped_print(f"Playlist for {current_time} updated to {user_input}.")
         refresh_playlist_gui(current_time)
         spotify_main()
     else:
@@ -730,8 +726,7 @@ def remove_playlist(user_input=None):
         timestamped_print(f"Playlist for {user_input} has been removed.")
 
         refresh_playlist_gui()
-        display_playlist_info()
-        pause_music()
+        spotify_main()
     else:
         timestamped_print(f"No playlist found for {user_input}.")
 
@@ -749,21 +744,26 @@ time_dropdown.bind("<<ComboboxSelected>>", update_view_for_time)
 # Set default as selected time
 if schedule:
     selected_time.set(schedule[0])
-    
-playlist_info = {
-    "name": _("failed_to_fetch_data"),
-    "owner": _("failed_to_fetch_data"),
-    "image_url": ""
-}
 
+def get_spotify_playlist(id):
+    try:
+        return sp.playlist(id)
+    except Exception:
+        return sp_anon.playlist(id)
 def get_playlist_info():
     global PLAYLIST_ID
+    global playlist_info
     if PLAYLIST_ID:
         try:
-            playlist = sp.playlist(PLAYLIST_ID)
+            playlist_info = {
+                "name": _("failed_to_fetch_data"),
+                "owner": _("failed_to_fetch_data"),
+                "image_url": ""
+            }
+            playlist = get_spotify_playlist(PLAYLIST_ID)
             if playlist["name"]:
                 playlist_info["name"] = playlist["name"]
-            if playlist["owner"]:
+            if playlist["owner"]['display_name']:
                 playlist_info["owner"] = playlist["owner"]['display_name']
 
 
@@ -771,8 +771,6 @@ def get_playlist_info():
             images = playlist.get("images", [])
             if images:
                 playlist_info["image_url"] = images[0]["url"]
-            else:
-                playlist_info["image_url"] = ""
 
             timestamped_print(f"Playlist: {playlist_info['name']} Owner: {playlist_info['owner']}")
         except Exception as e:
@@ -848,7 +846,6 @@ def fetch_user_playlists():
     try:
         playlists = sp.current_user_playlists()
         playlist_table.delete(*playlist_table.get_children())  
-
         for playlist in playlists['items']:
             if playlist: 
                 playlist_name = playlist['name']
@@ -882,7 +879,7 @@ load_playlists_btn.pack(side='left', pady=10, padx=10)
 
 
 def display_playlist_info():
-
+    global playlist_info
     get_playlist_info()
 
     playlist_label.config(text=f"{_('Playlist')}: {playlist_info['name']}\n{_('Owner')}: {playlist_info['owner']}")
@@ -1003,7 +1000,7 @@ def update_now_playing_info():
             if lastfetch != playing_playlist:
                 try:
                     lastfetch = playing_playlist
-                    playlist_details = sp.playlist(playing_playlist)
+                    playlist_details = get_spotify_playlist(playing_playlist)
                     if playlist_details:
                         playlist_name = playlist_details.get("name", "-")
                 except Exception as e:

@@ -2,3 +2,4 @@ spotipy
 python-dotenv
 psutil
 pillow
+spotipy_anon
