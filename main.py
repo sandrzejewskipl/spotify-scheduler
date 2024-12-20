@@ -128,6 +128,7 @@ def refresh_settings():
 def initialize_sp():
     global sp, sp_anon
     sp=None
+    sp_anon=None
     if CLIENT_ID!="" and CLIENT_SECRET!="":
 
         try:
@@ -747,6 +748,8 @@ if schedule:
 
 def get_spotify_playlist(id):
     try:
+        if "37i9dQZF1" in id: #check if spotify owned playlist
+            return sp_anon.playlist(id)
         return sp.playlist(id)
     except Exception:
         return sp_anon.playlist(id)
