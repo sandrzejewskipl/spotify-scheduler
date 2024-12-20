@@ -19,7 +19,7 @@ from translations import translations
 import os
 from spotipy_anon import SpotifyAnon
 
-version="1.5.2"
+version="1.6.0"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
