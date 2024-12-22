@@ -958,7 +958,8 @@ def checklist():
         checklistvar.set(_("Checklist", process=proces, device=found_device, volume=volume, playlist=playlist))
 
     except Exception as ex:
-        checklistvar.set(f"Problem z pobraniem danych: {ex}")
+        timestamped_print(f"Checklist error: {error(ex)}")
+        checklistvar.set(_("failed_to_fetch_data"))
 
 
     
@@ -1155,7 +1156,7 @@ def play_music():
 
 
     except Exception as ex:
-        timestamped_print(f"Error while playing: {ex}")
+        timestamped_print(f"Error while playing: {error(ex)}")
 
 last_spotify_run=False
 def pause_music(retries=3, delay=2):
@@ -1218,7 +1219,7 @@ def spotify_main():
                 else:
                     status.set(_("Music is currently playing."))
             except Exception as ex:
-                timestamped_print(f"Error getting playback status: {ex}")
+                timestamped_print(f"Error getting playback status: {error(ex)}")
         else:
             status.set(_("out_of_schedule"))
             pause_music()
