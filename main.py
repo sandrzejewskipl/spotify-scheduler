@@ -945,7 +945,7 @@ def checklist():
                     break
         PLAYLIST_ID=get_playlist_for_schedule("default")
         if PLAYLIST_ID:
-            playlist = _("Playlist Set", playlist_id=PLAYLIST_ID)
+            playlist = _("Playlist Set")
         else:
             playlist = _("Playlist Missing")
         if os.name == 'nt':
@@ -1065,8 +1065,6 @@ def update_now_playing_info():
         now_playing_label.config(text=_("failed_to_fetch_data"))
 
     checklist()
-
-    root.after(2500, update_now_playing_info)  # Refresh
 
 # Pause music and stop automation button
 pause_play_btn = ttk.Button(now_playing_frame, text=_("Pause music and stop automation"), command=pauseandauto)
@@ -1227,6 +1225,7 @@ def spotify_main():
                 global_devices = sp.devices()
             except Exception:
                 pass
+    update_now_playing_info()
 
 # Disable quickedit mode on Windows terminal.
 def disable_quickedit():
@@ -1279,7 +1278,6 @@ def main():
         root.iconbitmap(bundle_path("icon.ico"))
     refresh_settings()
     initialize_sp()
-    update_now_playing_info()
     load_schedule_to_table()
     
     def loop():
