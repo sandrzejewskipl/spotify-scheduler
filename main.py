@@ -19,6 +19,7 @@ from translations import translations
 import os
 from spotipy_anon import SpotifyAnon
 
+print(f"! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
 version="1.6.0"
 config_file="config.json"
 schedule_file="schedule.txt"

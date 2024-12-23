@@ -17,7 +17,7 @@ translations = {
         "Made_with": "Wykonane z ogromną pomocą sztucznej inteligencji.",
         "Greetings": "Pozdrawiam moją szkołę, to dla was misiaki <3",
         "Killswitch": "Killswitch - zatrzymaj proces Spotify, gdy wystąpi błąd z API. (tylko Windows)",
-        "Auto Spotify": "Automatycznie uruchom Spotify, jeśli urządzenie jest niedostępne. (only Windows)",
+        "Auto Spotify": "Automatycznie uruchom Spotify, jeśli urządzenie jest niedostępne. (tylko Windows)",
         "Weekdays Only": "Odtwarzaj muzykę tylko w dni robocze (poniedziałek - piątek)",
         "Save Settings": "Zapisz ustawienia",
         "Start Time": "Godzina rozpoczęcia",
