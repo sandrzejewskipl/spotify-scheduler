@@ -1039,7 +1039,7 @@ def update_now_playing_info():
             f"{_('Device')}: {target_device_name}\n\n"
             f"{_('State')}: {playback_state}\n"
             f"{_('Time slot')}: {last_schedule.strip()}")
-            ,justify='center')
+            )
 
             # Get and display cover photo
             if lastresponse!=track["album"]:
