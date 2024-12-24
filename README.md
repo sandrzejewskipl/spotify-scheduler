@@ -1,12 +1,9 @@
-<head>
-<meta name="google-site-verification" content="f2Z2Pj-uax87F1Ydp1TJX5dMwfDj4ZCW7XLGCKD0Xrk" />
-</head>
 <p align="center">
 <img src="icon.ico" width='150'>
 </p>
 
 # <a href="https://github.com/sandrzejewskipl/spotify-scheduler">Spotify Scheduler</a>
-This Python GUI application lets you schedule Spotify playlists to play at specific hours and minutes (e.g., 8:00-8:15). Use it to automate your listening experience and customize playback times according to your preferences.
+This Python GUI application lets you schedule Spotify playlists to play at specific hours and minutes (e.g., 8:00-8:15). Use it to automate your listening experience and customize playback times according to your preferences. You can select different playlist for each time slot.
 
 ![Now playing tab](img/now_playing.png)
 
@@ -61,6 +58,8 @@ Run this command from the command line in the same directory.
 
 On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify. Then OAuth popup should open.
 
+# Remember to turn on shuffle in your Spotify client to play different track each time.
+
 ## Settings
 ![Settings](img/settings.png)
 
@@ -79,4 +78,6 @@ You can fully configure your settings and set your schedule using the GUI. If yo
 <b>Auto-lunch spotify</b> - feature that automatically launches Spotify if the device is not detected on the devices list. (only on Windows) <b>Default: </b>Off
 
 
-## After changing the language, run the script again.
+### After changing the language, run the script again.
+
+<h1 align="center"><a href="https://github.com/sandrzejewskipl/spotify-scheduler/releases/latest">Download latest release</a></h1>
