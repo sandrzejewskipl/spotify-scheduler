@@ -79,4 +79,6 @@ You can fully configure your settings and set your schedule using the GUI. If yo
 <b>Auto-lunch spotify</b> - feature that automatically launches Spotify if the device is not detected on the devices list. (only on Windows) <b>Default: </b>Off
 
 
-## After changing the language, run the script again.
+### After changing the language, run the script again.
+
+<h1 align="center"><a href="https://github.com/sandrzejewskipl/spotify-scheduler/releases/latest">Download latest release</a></h1>
