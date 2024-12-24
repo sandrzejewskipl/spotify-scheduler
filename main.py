@@ -222,7 +222,7 @@ info_text.insert("insert", f"Szymon Andrzejewski\n", "link1")
 info_text.insert("insert", f"{_('GitHub')}: ")
 info_text.insert("insert", "https://github.com/sandrzejewskipl/Spotify-Scheduler\n", "link2")
 
-info_text.insert("insert", f"\n{_('Made_with')}\n{_('Greetings')}")
+info_text.insert("insert", f"\n{_('Made_with')}\n{_('Greetings')}\n\nMIT License - © 2024 Szymon Andrzejewski")
 
 info_text.tag_config("header", font=("Arial", 14, "bold"), justify="center")
 info_text.tag_config("link1", foreground="blue", underline=True)
