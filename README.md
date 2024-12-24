@@ -38,7 +38,7 @@ On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify
 <b>Install dependencies:</b><br>
 Make sure you have <b>Python 3</b> installed. Then, download the required packages by running:
 
-`pip install -r requirements.txt`<br>
+`pip3 install -r requirements.txt`<br>
 
 Make sure you have <b>Python3-tk</b> installed.
 
