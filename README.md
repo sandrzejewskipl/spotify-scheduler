@@ -58,6 +58,8 @@ Run this command from the command line in the same directory.
 
 On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify. Then OAuth popup should open.
 
+# Remember to turn on shuffle in your Spotify client to play different track each time.
+
 ## Settings
 ![Settings](img/settings.png)
 
