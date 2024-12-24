@@ -20,7 +20,7 @@ import os
 from spotipy_anon import SpotifyAnon
 
 print(f"! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
-version="1.6.0"
+version="1.6.1"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
@@ -1228,16 +1228,6 @@ def spotify_main():
                 pass
     update_now_playing_info()
 
-# Disable quickedit mode on Windows terminal.
-def disable_quickedit():
-    if os.name == 'nt':
-        try:
-            from ctypes import windll
-            kernel32 = windll.kernel32
-            kernel32.SetConsoleMode(kernel32.GetStdHandle(-10), 128)
-        except Exception as e:
-            timestamped_print(f'Cannot disable QuickEdit mode: {error(e)}')
-
 def main():
     global CLIENT_ID, CLIENT_SECRET, config
     if(not CLIENT_ID or not CLIENT_SECRET):
@@ -1251,7 +1241,6 @@ def main():
             config = json.load(f)
     except FileNotFoundError:
         config = {}
-    disable_quickedit()
 
     config['CLIENT_ID'] = CLIENT_ID
     config['CLIENT_SECRET'] = CLIENT_SECRET
@@ -1275,11 +1264,19 @@ def main():
     except Exception as e:
         timestamped_print(f"Error during reading schedule: {error(e)}")            
     t.sleep(5)   
-    if os.name == 'nt':
-        root.iconbitmap(bundle_path("icon.ico"))
     refresh_settings()
     initialize_sp()
     load_schedule_to_table()
+        
+    if os.name == 'nt':
+        root.iconbitmap(bundle_path("icon.ico"))
+        try:
+            from ctypes import windll
+            kernel32 = windll.kernel32
+            kernel32.SetConsoleMode(kernel32.GetStdHandle(-10), 128)
+        except Exception as e:
+            timestamped_print(f'Cannot disable QuickEdit mode: {error(e)}')
+            
     
     def loop():
         spotify_main()
