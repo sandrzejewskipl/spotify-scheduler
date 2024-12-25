@@ -18,9 +18,10 @@ import platform
 from translations import translations
 import os
 from spotipy_anon import SpotifyAnon
+import logging
 
 print(f"! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
-version="1.6.1"
+version="1.6.2"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
@@ -756,12 +757,23 @@ if schedule:
     selected_time.set(schedule[0])
 
 def get_spotify_playlist(id):
+    result = None
+
+    # Spotipy doesn't log 404 errors as an exception, so temporarily disable logging.
+    logger = logging.getLogger("spotipy.client")
+    original_level = logger.level
+    logger.setLevel(logging.CRITICAL)
+
     try:
-        if "37i9dQZF1" in id: #check if spotify owned playlist
-            return sp_anon.playlist(id)
-        return sp.playlist(id)
+        result = sp_anon.playlist(id)
     except Exception:
-        return sp_anon.playlist(id)
+        result = sp.playlist(id)
+
+    logger.setLevel(original_level) # Bring back original logging
+
+    return result
+    
+
 def get_playlist_info():
     global PLAYLIST_ID
     global playlist_info
@@ -788,6 +800,12 @@ def get_playlist_info():
         except Exception as e:
             timestamped_print(f"Failed to retrieve playlist {PLAYLIST_ID} data: {error(e)}")
             return ""
+    else:
+        playlist_info = {
+            "name": "",
+            "owner": "",
+            "image_url": ""
+        }
 
 
 # Playlist container
@@ -889,7 +907,6 @@ load_playlists_btn.pack(side='left', pady=10, padx=10)
 
 
 
-
 def display_playlist_info():
     global playlist_info
     get_playlist_info()
@@ -901,18 +918,18 @@ def display_playlist_info():
         if response.status_code == 200:
             img_data = BytesIO(response.content)
             img = Image.open(img_data)
-            img = img.resize((150, 150))
-            playlist_img = ImageTk.PhotoImage(img)
-
-            playlist_image_label.config(image=playlist_img)
-            playlist_image_label.image = playlist_img 
         else:
-            playlist_image_label.config(text=_("Image not found"))
+            img = Image.new("RGB", (150, 150), "lightgrey")
     else:
-        playlist_image_label.image=""
+        img = Image.new("RGB", (150, 150), "lightgrey")
+
+    img = img.resize((150, 150))
+    playlist_img = ImageTk.PhotoImage(img)
+
+    playlist_image_label.config(image=playlist_img)
+    playlist_image_label.image = playlist_img
 
 
-# of
 
 # now playing label
 now_playing_label = ttk.Label(now_playing_frame, text="", font=("Arial", 12))
