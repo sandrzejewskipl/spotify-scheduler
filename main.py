@@ -757,22 +757,20 @@ if schedule:
     selected_time.set(schedule[0])
 
 def get_spotify_playlist(id=None):
-    result = None
+    if not id:
+        return None
+    
+    # Spotipy doesn't log 404 errors as an exception, so temporarily disable logging.
+    logger = logging.getLogger("spotipy.client")
+    original_level = logger.level
+    logger.setLevel(logging.CRITICAL)
 
-    if id:
-        # Spotipy doesn't log 404 errors as an exception, so temporarily disable logging.
-        logger = logging.getLogger("spotipy.client")
-        original_level = logger.level
-        logger.setLevel(logging.CRITICAL)
-
-        try:
-            result = sp_anon.playlist(id)
-        except Exception:
-            result = sp.playlist(id)
-
+    try:
+        return sp_anon.playlist(id)
+    except Exception:
+        return sp.playlist(id)
+    finally:
         logger.setLevel(original_level) # Bring back original logging
-
-    return result
     
 
 def get_playlist_info():
