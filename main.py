@@ -756,20 +756,21 @@ time_dropdown.bind("<<ComboboxSelected>>", update_view_for_time)
 if schedule:
     selected_time.set(schedule[0])
 
-def get_spotify_playlist(id):
+def get_spotify_playlist(id=None):
     result = None
 
-    # Spotipy doesn't log 404 errors as an exception, so temporarily disable logging.
-    logger = logging.getLogger("spotipy.client")
-    original_level = logger.level
-    logger.setLevel(logging.CRITICAL)
+    if id:
+        # Spotipy doesn't log 404 errors as an exception, so temporarily disable logging.
+        logger = logging.getLogger("spotipy.client")
+        original_level = logger.level
+        logger.setLevel(logging.CRITICAL)
 
-    try:
-        result = sp_anon.playlist(id)
-    except Exception:
-        result = sp.playlist(id)
+        try:
+            result = sp_anon.playlist(id)
+        except Exception:
+            result = sp.playlist(id)
 
-    logger.setLevel(original_level) # Bring back original logging
+        logger.setLevel(original_level) # Bring back original logging
 
     return result
     
