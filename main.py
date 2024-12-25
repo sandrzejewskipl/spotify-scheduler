@@ -1248,8 +1248,9 @@ def spotify_main():
 def main():
     global CLIENT_ID, CLIENT_SECRET, config
     if(not CLIENT_ID or not CLIENT_SECRET):
+        print(f"Create an app here (instructions are in README on Github):\nhttps://developer.spotify.com/dashboard (should open automatically)")
+        t.sleep(1.5)
         open_link("https://developer.spotify.com/dashboard")
-        print("Create an app here: https://developer.spotify.com/dashboard")
         CLIENT_ID = input("Enter CLIENT_ID: ")
         CLIENT_SECRET = input("Enter CLIENT_SECRET: ")
 
