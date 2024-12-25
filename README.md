@@ -63,8 +63,6 @@ On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify
 ## Settings
 ![Settings](img/settings.png)
 
-You can fully configure your settings and set your schedule using the GUI. If you are unable to display the GUI, you can customize the files in the `spotify-scheduler_data` folder and restart the app to apply the changes.
-
 ### Supported languages:
 - English (en)
 - Polish (pl)
