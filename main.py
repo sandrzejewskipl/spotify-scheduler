@@ -1,7 +1,6 @@
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from datetime import datetime
-from dotenv import load_dotenv
 import time as t
 import psutil
 import sys
