@@ -20,7 +20,7 @@ from spotipy_anon import SpotifyAnon
 import logging
 
 print(f"! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
-version="1.7.1"
+version="1.7.2"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
@@ -305,16 +305,19 @@ def refresh_settings():
 def delete_spotify_cache(ex=None):
     if validate_client_credentials():
         if "access" in ex:
-            with open('.cache', 'r') as file:
-                data = json.load(file)
+            try:
+                with open('.cache', 'r') as file:
+                    data = json.load(file)
 
-            data["expires_at"] = 0
+                data["expires_at"] = 0
 
-            with open('.cache', 'w') as file:
-                json.dump(data, file, indent=4)
-            timestamped_print("Forced access token to renew.")
-            initialize_sp()
-            return True
+                with open('.cache', 'w') as file:
+                    json.dump(data, file, indent=4)
+                timestamped_print("Forced access token to renew.")
+                initialize_sp()
+                return True
+            except Exception:
+                pass
         if os.path.exists(".cache"):
             killswitch("Spotipy cache deleted - killed for safety because OAuth freezes app.")
             try:
@@ -1197,15 +1200,18 @@ checklist_label.pack(padx=10, pady=5)
 def killswitch(reason=None):
     if KILLSWITCH_ON:
         processes=0
-        for proc in psutil.process_iter():
-            if PROCNAME.lower() in proc.name().lower():
-                if (proc.pid!=current_pid) and (proc.pid!=parent_pid):
-                    try:
-                        proc.kill()
-                        processes+=1
-                        status.set(_("Killed Spotify process"))
-                    except Exception:
-                        pass
+        try:
+            for proc in psutil.process_iter():
+                if PROCNAME.lower() in proc.name().lower():
+                    if (proc.pid!=current_pid) and (proc.pid!=parent_pid):
+                        try:
+                            proc.kill()
+                            processes+=1
+                            status.set(_("Killed Spotify process"))
+                        except Exception:
+                            pass
+        except Exception as e:
+            timestamped_print(f"Kilswitch failed: {error(e)}")
         if processes>0:
             timestamped_print(f"Killed {processes} Spotify process(es). Reason: {reason}")
 
