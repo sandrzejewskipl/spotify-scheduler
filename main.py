@@ -20,7 +20,7 @@ from spotipy_anon import SpotifyAnon
 import logging
 
 print(f"! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
-version="1.6.2"
+version="1.7.0"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
@@ -109,7 +109,6 @@ KILLSWITCH_ON = config['KILLSWITCH_ON']
 WEEKDAYS_ONLY = config['WEEKDAYS_ONLY']
 AUTO_SPOTIFY = config['AUTO_SPOTIFY']
 LANG = config['LANG']
-PLAYLIST_ID = None
 
 REDIRECT_URI = "http://localhost:23918"
 SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private"
@@ -143,7 +142,7 @@ def initialize_sp():
             timestamped_print(f"Error during spotipy initalization: {error(e)}")
 
 def save_settings():
-    global config, CLIENT_ID, CLIENT_SECRET, KILLSWITCH_ON, WEEKDAYS_ONLY, PLAYLIST_ID, DEVICE_NAME, LANG, setting_entries, AUTO_SPOTIFY
+    global config, CLIENT_ID, CLIENT_SECRET, KILLSWITCH_ON, WEEKDAYS_ONLY, DEVICE_NAME, LANG, setting_entries, AUTO_SPOTIFY
     config['CLIENT_ID'] = setting_entries['CLIENT_ID'].get()
     config['CLIENT_SECRET'] = setting_entries['CLIENT_SECRET'].get()
     config['DEVICE_NAME'] = setting_entries['DEVICE_NAME'].get()
@@ -172,7 +171,7 @@ def save_settings():
 
 # Creating a GUI window
 root = tk.Tk()
-root.title(f"Spotify Scheduler {version} | by @sandrzejewskipl")
+root.title(f"Spotify Scheduler v{version}")
 root.geometry("800x600")
 root.resizable(False, False) 
 
@@ -324,8 +323,9 @@ def load_schedule_to_table():
             lines = file.readlines()
             schedule_table.delete(*schedule_table.get_children())
             for line in lines:
-                start_time, end_time = line.strip().split("-")
-                schedule_table.insert("", "end", values=(start_time, end_time))
+                if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
+                    start_time, end_time = line.strip().split("-")
+                    schedule_table.insert("", "end", values=(start_time, end_time))
         timestamped_print("Schedule loaded into table.")
         refresh_playlist_gui()
     except FileNotFoundError:
@@ -378,14 +378,14 @@ def save_schedule_from_table():
             rows.append((start_time, end_time))
 
         # Sort entries by start time
-        rows.sort(key=lambda x: datetime.strptime(x[0], "%H:%M"))
+        rows.sort(key=lambda x: datetime.strptime(x[0], "%H:%M:%S" if ":" in x[0] and x[0].count(":") == 2 else "%H:%M"))
 
         # Save sorted entries to file
         with open(schedule_file, "w") as file:
             for start_time, end_time in rows:
                 file.write(f"{start_time}-{end_time}\n")
 
-        timestamped_print("The schedule has been saved.")
+        timestamped_print("Schedule has been saved.")
         load_schedule_to_table()
         refresh_playlist_gui()
     except Exception as e:
@@ -415,12 +415,12 @@ def get_playlist_for_schedule(key=None):
             now = datetime.now().time()
             if key==None:
                 for line in lines:
-                    start_str, end_str = line.strip().split("-")
-                    start_time = datetime.strptime(start_str, "%H:%M").time()
-                    end_time = datetime.strptime(end_str, "%H:%M").time()
-                    if start_time <= now <= end_time:
-                        key=line
-                        break
+                    if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
+                        start_str, end_str = line.strip().split("-")
+                        start_time = datetime.strptime(start_str, "%H:%M:%S" if ":" in start_str and start_str.count(":") == 2 else "%H:%M").time()
+                        end_time = datetime.strptime(end_str, "%H:%M:%S" if ":" in end_str and end_str.count(":") == 2 else "%H:%M").time()
+                        if start_time <= now <= end_time:
+                            key=line
             if key:
                 try:
                     with open(schedule_playlists_file, "r") as file:
@@ -442,7 +442,7 @@ def get_playlist_for_schedule(key=None):
     return False
 
 def is_valid_time_format(time_str):
-    time_pattern = r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$"  # Hours: 00-23, Minutes: 00-59
+    time_pattern = r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$"  # Hours: 00-23, Minutes: 00-59
     return re.match(time_pattern, time_str) is not None
 
 def add_entry(event=None):
@@ -450,15 +450,15 @@ def add_entry(event=None):
     end_time = (end_time_entry.get()).replace(';',':')
 
     if not is_valid_time_format(start_time):
-        timestamped_print(f"Incorrect time format: {start_time}. Use HH:MM.")
+        timestamped_print(f"Incorrect time format: {start_time}. Use HH:MM or HH:MM:SS.")
         return
 
     if not is_valid_time_format(end_time):
-        timestamped_print(f"Incorrect time format: {end_time}. Use HH:MM.")
+        timestamped_print(f"Incorrect time format: {end_time}. Use HH:MM or HH:MM:SS.")
         return
 
-    start_dt = datetime.strptime(start_time, "%H:%M")
-    end_dt = datetime.strptime(end_time, "%H:%M")
+    start_dt = datetime.strptime(start_time, "%H:%M:%S" if ":" in start_time and start_time.count(":") == 2 else "%H:%M")
+    end_dt = datetime.strptime(end_time, "%H:%M:%S" if ":" in end_time and end_time.count(":") == 2 else "%H:%M")
 
     if end_dt <= start_dt:
         timestamped_print("Error: End time must be later than start time.")
@@ -546,7 +546,7 @@ is_paused = False
 def toggle_pause():
     global is_paused
     is_paused = not is_paused
-    status = _( "Paused") if is_paused else _( "Running")
+    status = "Paused" if is_paused else "Running"
     timestamped_print(f"App state: {status}")
     pause_button.config(text=_("Resume Automation") if is_paused else _("Pause Automation"))
     pause_play_btn.config(text=_("Pause music and stop automation") if not is_paused else _("Resume Automation"))
@@ -683,13 +683,12 @@ def get_playlist_id_for_hour(hour):
 
 # Function to update the view based on the selected time
 def update_view_for_time(*args):
-    global PLAYLIST_ID
     current_time = selected_time.get()
 
     hour = current_time.split("(")[0].rstrip(" ")
     PLAYLIST_ID = get_playlist_for_schedule(key=hour)
         
-    display_playlist_info()
+    display_playlist_info(PLAYLIST_ID)
 
 
 playlist_info = {
@@ -705,7 +704,6 @@ def change_playlist():
         current_time = selected_time.get().split("(")[0].rstrip(" ") 
 
         playlist_entry.delete(0, tk.END)
-        PLAYLIST_ID = None
         PLAYLIST_ID = extract_playlist_id(user_input) if "open.spotify.com" in user_input else user_input
 
         if not PLAYLIST_ID:
@@ -772,17 +770,20 @@ def get_spotify_playlist(id=None):
         logger.setLevel(original_level) # Bring back original logging
     
 
-def get_playlist_info():
-    global PLAYLIST_ID
-    global playlist_info
-    if PLAYLIST_ID:
+def get_playlist_info(id=None):
+    playlist_info = {
+        "name": "",
+        "owner": "",
+        "image_url": ""
+    }
+    if id:
         try:
             playlist_info = {
                 "name": _("failed_to_fetch_data"),
                 "owner": _("failed_to_fetch_data"),
                 "image_url": ""
             }
-            playlist = get_spotify_playlist(PLAYLIST_ID)
+            playlist = get_spotify_playlist(id)
             if playlist["name"]:
                 playlist_info["name"] = playlist["name"]
             if playlist["owner"]['display_name']:
@@ -794,16 +795,10 @@ def get_playlist_info():
             if images:
                 playlist_info["image_url"] = images[0]["url"]
 
-            return f"Playlist: {playlist_info['name']}, Owner: {playlist_info['owner']}"
         except Exception as e:
-            timestamped_print(f"Failed to retrieve playlist {PLAYLIST_ID} data: {error(e)}")
-            return ""
-    else:
-        playlist_info = {
-            "name": "",
-            "owner": "",
-            "image_url": ""
-        }
+            timestamped_print(f"Failed to retrieve playlist {id} data: {error(e)}")
+
+    return playlist_info
 
 
 # Playlist container
@@ -905,9 +900,8 @@ load_playlists_btn.pack(side='left', pady=10, padx=10)
 
 
 
-def display_playlist_info():
-    global playlist_info
-    get_playlist_info()
+def display_playlist_info(id):
+    playlist_info = get_playlist_info(id)
 
     playlist_label.config(text=f"{_('Playlist')}: {playlist_info['name']}\n{_('Owner')}: {playlist_info['owner']}")
 
@@ -985,8 +979,9 @@ lastfetch=None
 lastresponse=None
 lasttype=None
 playlist_info_str=None
+lastalbum=None
 def update_now_playing_info():
-    global lastfetch, playlist_name, lastresponse, playlist_info_str
+    global lastfetch, playlist_name, lastresponse, playlist_info_str, lasttype, lastalbum
     
     try:
         # LIMIT SPOTIFY API CALLS
@@ -1030,18 +1025,26 @@ def update_now_playing_info():
                 pass
             current_track = current_playback['item']
             album = current_track['album']
-            if lastfetch != playing_playlist:
+
+            forcefetch=False
+            if album['name']!=lastalbum and lasttype=="album":
+                forcefetch=True
+
+            if lastfetch != playing_playlist or forcefetch:
                 if playing_playlist:
                     try:
                         lastfetch = playing_playlist
                         playlist_details = get_spotify_playlist(playing_playlist)
                         if playlist_details:
+                            lasttype="playlist"
                             playlist_name = playlist_details.get("name", "-")
                             failed=False
                     except Exception as e:
                         playlist_name = _("failed_to_fetch_data")
                     playlist_info_str = f"{_('Playlist')}: {playlist_name}"
                 if failed:
+                    lasttype="album"
+                    lastalbum=album['name']
                     playlist_info_str = f"{_('Album')}: {album['name']}"
             
             if not playlist_info_str:
@@ -1099,37 +1102,39 @@ def killswitch():
     if KILLSWITCH_ON:
         for proc in psutil.process_iter():
             if PROCNAME.lower() in proc.name().lower():
-                if (proc.pid!=current_pid) or (proc.pid!=parent_pid):
+                if (proc.pid!=current_pid) and (proc.pid!=parent_pid):
                     proc.kill()
                     timestamped_print("Killed Spotify process")
                     status.set(_("Killed Spotify process"))
 
-last_schedule=''
 last_endtime=None
 def is_within_schedule(schedule_file=schedule_file):
+    match=False
     global last_schedule, WEEKDAYS_ONLY, last_endtime
+    last_schedule=''
     try:
         with open(schedule_file, "r+") as file:
             lines = file.readlines()
             now = datetime.now().time()
             for line in lines:
-                start_str, end_str = line.strip().split("-")
-                start_time = datetime.strptime(start_str, "%H:%M").time()
-                end_time = datetime.strptime(end_str, "%H:%M").time()
-                if start_time <= now <= end_time:
-                    weekno = datetime.today().weekday()
-                    if not WEEKDAYS_ONLY:
-                        weekno = 0
-                    if weekno < 5:
-                        last_schedule=line
-                        last_endtime=datetime.combine(datetime.now(), end_time)
-                        return True
+                if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
+                    start_str, end_str = line.strip().split("-")
+                    start_time = datetime.strptime(start_str, "%H:%M:%S" if ":" in start_str and start_str.count(":") == 2 else "%H:%M").time()
+                    end_time = datetime.strptime(end_str, "%H:%M:%S" if ":" in end_str and end_str.count(":") == 2 else "%H:%M").time()
+                    if start_time <= now <= end_time:
+                        weekno = datetime.today().weekday()
+                        if not WEEKDAYS_ONLY:
+                            weekno = 0
+                        if weekno < 5:
+                            last_schedule=line
+                            last_endtime=datetime.combine(datetime.now(), end_time)
+                            match=True
     except FileNotFoundError:
         timestamped_print(f"The file schedule.txt does not exist, it will be created now from default.")
         replace_schedule_with_default()
     except Exception as e:
         timestamped_print(f"Error during reading schedule: {error(e)}")
-    return False
+    return match
 
 last_playlist=''
 def play_music():
@@ -1159,7 +1164,11 @@ def play_music():
             if PLAYLIST_ID:
                 sp.start_playback(device_id=target_device, context_uri=f"spotify:playlist:{PLAYLIST_ID}")
                 last_playlist=PLAYLIST_ID
-                timestamped_print(f"Music playing on {device['name']}. {get_playlist_info()}")
+                playlist_info=get_playlist_info(PLAYLIST_ID)
+                string=""
+                if playlist_info:
+                    string=f"Playlist: {playlist_info['name']}, Owner: {playlist_info['owner']}"
+                timestamped_print(f"Music playing on {device['name']}. {string}")
                 last_spotify_run=False
         else:
             status.set(_( "no_active_device"))
@@ -1192,6 +1201,12 @@ def pause_music(retries=3, delay=2):
             status.set(_("out_of_schedule_paused"))
             return  # Zakończ funkcję, jeśli się udało
         except Exception as e:
+            if ("token" in str(e)) or ("Expecting value" in str(e)):
+                if os.path.exists(".cache"):
+                    os.remove(".cache")
+                    initialize_sp()
+                    timestamped_print("Cache file with access token has been deleted.")
+                    return
             attempt += 1
             timestamped_print(f"Error occurred, retrying... ({attempt}/{retries}, took {round(((datetime.now()-took_time).total_seconds()),2)}s) {error(e)}")
             t.sleep(delay)
@@ -1234,6 +1249,11 @@ def spotify_main():
                     status.set(_("Music is currently playing."))
             except Exception as ex:
                 timestamped_print(f"Error getting playback status: {error(ex)}")
+                if ("token" in str(ex)) or ("Expecting value" in str(ex)):
+                    if os.path.exists(".cache"):
+                        os.remove(".cache")
+                        initialize_sp()
+                        timestamped_print("Cache file with access token has been deleted.")
         else:
             status.set(_("out_of_schedule"))
             pause_music()
@@ -1244,7 +1264,7 @@ def spotify_main():
     update_now_playing_info()
 
 def main():
-    global CLIENT_ID, CLIENT_SECRET, config
+    global CLIENT_ID, CLIENT_SECRET, config, newupdate
     if(not CLIENT_ID or not CLIENT_SECRET):
         print(f"Create an app here (instructions are in README on Github):\nhttps://developer.spotify.com/dashboard (it should open automatically)")
         t.sleep(1.5)
@@ -1270,15 +1290,20 @@ def main():
     print(_( "check_schedule"))
     try:
         with open(schedule_file, 'r') as file:
-            content = file.read() 
-            print(f'{content}\n')
+            lines = file.readlines()
+            for line in lines:
+                if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
+                    print(f'{line.strip()}')
     except FileNotFoundError:
         replace_schedule_with_default()
         with open(schedule_file, 'r') as file:
-            content = file.read() 
-            print(f'{content}\n')
+            lines = file.readlines()
+            for line in lines:
+                if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
+                    print(f'{line.strip()}')
     except Exception as e:
-        timestamped_print(f"Error during reading schedule: {error(e)}")            
+        timestamped_print(f"Error during reading schedule: {error(e)}")     
+    print('') # newline
     t.sleep(5)   
     refresh_settings()
     initialize_sp()
@@ -1295,15 +1320,48 @@ def main():
             
     
     def loop():
-        spotify_main()
+        try:
+            spotify_main()
+        except Exception as e:
+            timestamped_print(f"Exception during looping Spotify main function. {error(e)}")
+            pause_music()
         root.after(2500, loop)  # Loop
 
     def fetching_loop():
         fetch_user_playlists()
         root.after(60000, fetching_loop)
+    
+    def title_loop(lastdate=None):
+        try:
+            global newupdate
+            now = datetime.now().strftime("%H:%M:%S")
+            if lastdate!=now: #update title only when time changes
+                lastdate=now
+                root.title(f"Spotify Scheduler v{version} | {now} {newupdate}")
+        except Exception:
+            pass
+
+        root.after(100, title_loop, lastdate)
+
+    def updatechecker_loop():
+        global newupdate
+        try:
+            response = requests.get("https://api.github.com/repos/sandrzejewskipl/spotify-scheduler/releases/latest")
+        except Exception:
+            pass
+        newupdate=""
+        if response:
+            if response.json()["tag_name"]:
+                if response.json()["tag_name"]!=version:
+                    newupdate=(f"| {_('A new update is available for download')}!")
+                    timestamped_print(f"A new update is available for download at https://github.com/sandrzejewskipl/spotify-scheduler/releases/latest (latest {response.json()['tag_name']} vs current {version})")
+        root.after(600000, updatechecker_loop)
 
     loop()
     fetching_loop()
+    updatechecker_loop()
+    title_loop()
+
 
 if __name__ == "__main__":
     root.after(0, main)

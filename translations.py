@@ -22,8 +22,8 @@ translations = {
         "Save Settings": "Zapisz ustawienia",
         "Start Time": "Godzina rozpoczęcia",
         "End Time": "Godzina zakończenia",
-        "START_LABEL": "Rozpoczęcie (HH:MM)",
-        "END_LABEL": "Zakończenie (HH:MM)",
+        "START_LABEL": "Rozpoczęcie (HH:MM lub HH:MM:SS)",
+        "END_LABEL": "Zakończenie (HH:MM lub HH:MM:SS)",
         "Add Entry": "Dodaj wpis",
         "Delete Selected": "Usuń zaznaczony",
         "Reload Schedule": "Przeładuj harmonogram",
@@ -75,7 +75,8 @@ translations = {
         "No ID set": "ID nie ustawione",
         "Select time slot:": "Wybierz przedział czasowy:",
         "Remove Playlist": "Usuń Playlistę",
-        "Time slot": "Przedział czasowy"
+        "Time slot": "Przedział czasowy",
+        "A new update is available for download": "Nowa aktualizacja jest dostępna do pobrania"
 
 
 
@@ -92,8 +93,8 @@ translations = {
         "Auto Spotify": "Auto-launch Spotify if device is unavailable. (only Windows)",
         "Weekdays Only": "Play music only on weekdays (Monday to Friday)",
         "Save Settings": "Save Settings",
-        "START_LABEL": "Start Time (HH:MM)",
-        "END_LABEL": "End Time (HH:MM)",
+        "START_LABEL": "Start Time (HH:MM or HH:MM:SS)",
+        "END_LABEL": "End Time (HH:MM or HH:MM:SS)",
         "Device Not Found": "❌ Device: NOT FOUND",
         "Check Manually": "❔ Volume: CHECK MANUALLY",
         "Spotify Is Turned Off": "❌ Spotify is turned off",
