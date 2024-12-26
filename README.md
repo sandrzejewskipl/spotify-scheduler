@@ -66,8 +66,7 @@ On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify
 ### Supported languages:
 - English (en)
 - Polish (pl)
-
-<b>After changing CLIENT_ID or CLIENT_SECRET or wanting to change Spotify account (do it by logging in to another account in the browser), click `Delete cache (logout)` button.</b>
+### After changing the language, run the script again.
 
 <b>DEVICE NAME</b> - name (or part of it) of the device in Spotify API that will play music. You can find the device name in the bottom-left corner or check the list of devices in the Settings tab. It defaults to host name.
 
@@ -76,8 +75,6 @@ On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify
 <b>Killswitch</b> - feature that kills the Spotify process(es) when an error with API occurs when pausing the playback. It prevents playing music out of schedule. (only on Windows) <b>Default: </b>On
 
 <b>Auto-lunch spotify</b> - feature that automatically launches Spotify if the device is not detected on the devices list. (only on Windows) <b>Default: </b>On
-
-
-### After changing the language, run the script again.
+### After changing CLIENT_ID or CLIENT_SECRET or wanting to change Spotify account (do it by logging in to another account in the browser), click `Delete cache (logout)` button.
 
 <h1 align="center"><a href="https://github.com/sandrzejewskipl/spotify-scheduler/releases/latest">Download latest release</a></h1>
