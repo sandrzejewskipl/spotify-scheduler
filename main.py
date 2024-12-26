@@ -149,7 +149,7 @@ def validate_client_credentials(client=None, secret=None):
         response = requests.post(url, headers=headers, data=data)
     except Exception:
         response=""
-        timestamped_print("Failed validating client credentials, proceeding as usual.")
+        timestamped_print("Failed validating client credentials.")
     if response:
         if "invalid" in response.text:
             timestamped_print(f"Credentials are not valid: {error((response.status_code))} {error((response.text))}")
