@@ -301,6 +301,7 @@ def refresh_settings():
 def delete_spotify_cache():
     if validate_client_credentials():
         if os.path.exists(".cache"):
+            killswitch("Spotipy cache deleted - killed for safety because OAuth freezes app.")
             os.remove(".cache")
             initialize_sp()
             timestamped_print("Cache file with access token has been deleted.")
@@ -1172,14 +1173,17 @@ checklist_label.pack(padx=10, pady=5)
 
 
 # Spotipy main functions
-def killswitch():
+def killswitch(reason=None):
     if KILLSWITCH_ON:
+        processes=0
         for proc in psutil.process_iter():
             if PROCNAME.lower() in proc.name().lower():
                 if (proc.pid!=current_pid) and (proc.pid!=parent_pid):
                     proc.kill()
-                    timestamped_print("Killed Spotify process")
+                    processes+=1
                     status.set(_("Killed Spotify process"))
+        if processes>0:
+            timestamped_print(f"Killed {processes} Spotify process(es). Reason: {reason}")
 
 last_endtime=None
 def is_within_schedule(schedule_file=schedule_file):
@@ -1261,7 +1265,7 @@ def pause_music(retries=3, delay=2):
     last_spotify_run = False
 
     if not spstatus:
-        killswitch()
+        killswitch("Pausing music - Spotipy not initialized.")
         return
     
     attempt = 0
@@ -1282,13 +1286,13 @@ def pause_music(retries=3, delay=2):
         except Exception as e:
             if ("token" in str(e)) or ("Expecting value" in str(e)):
                 delete_spotify_cache()
-                killswitch()
+                killswitch("Pausing music - Killed after deleting cache.")
                 return
             attempt += 1
             timestamped_print(f"Error occurred, retrying... ({attempt}/{retries}, took {round(((datetime.now()-took_time).total_seconds()),2)}s) {error(e)}")
             t.sleep(delay)
     timestamped_print("Failed to pause playback after multiple attempts.")
-    killswitch()
+    killswitch("Pausing music - Failed to pause music.")
 
 global_playback = None
 global_devices = None
