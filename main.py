@@ -157,9 +157,13 @@ def validate_client_credentials(client=None, secret=None):
         return True
     return False
 
+fakesplastprint=t.time()
 class fake_sp:
     def __call__(self, *args, **kwargs):
-        timestamped_print(f"Credentials are not valid, Spotipy can't be initialized. Change CLIENT_ID and CLIENT_SECRET.")
+        global fakesplastprint
+        if t.time()-fakesplastprint>=1:
+            timestamped_print(f"Credentials are not valid, Spotipy can't be initialized. Change CLIENT_ID and CLIENT_SECRET or fix internet connection.")
+            fakesplastprint=t.time()
         status.set(_("failed_to_fetch_data_console"))
 
     
@@ -298,14 +302,28 @@ def refresh_settings():
             var = setting_vars.get(key)
             var.set(config.get(key, False))
 
-def delete_spotify_cache():
+def delete_spotify_cache(ex=None):
     if validate_client_credentials():
+        if "access" in ex:
+            with open('.cache', 'r') as file:
+                data = json.load(file)
+
+            data["expires_at"] = 0
+
+            with open('.cache', 'w') as file:
+                json.dump(data, file, indent=4)
+            timestamped_print("Forced access token to renew.")
+            initialize_sp()
+            return True
         if os.path.exists(".cache"):
             killswitch("Spotipy cache deleted - killed for safety because OAuth freezes app.")
-            os.remove(".cache")
-            initialize_sp()
-            timestamped_print("Cache file with access token has been deleted.")
-            return True
+            try:
+                timestamped_print("Cache file with access token has been deleted.")
+                os.remove(".cache")
+                initialize_sp()
+                return True
+            except Exception as e:
+                timestamped_print(f"Failed to delete cache file: {error(e)}")
     else:
         timestamped_print("Credentials are not valid and cached token can't be deleted. Change CLIENT_ID and CLIENT_SECRET.")
         status.set(_("failed_to_fetch_data_console"))
@@ -353,7 +371,7 @@ buttons_frame.grid(row=7, column=0, columnspan=2, pady=10)
 save_btn = ttk.Button(buttons_frame, text=_("Save Settings"), command=save_settings)
 save_btn.pack(side="left", padx=5)
 
-deletecache_btn = ttk.Button(buttons_frame, text=_("Delete cache"), command=delete_spotify_cache)
+deletecache_btn = ttk.Button(buttons_frame, text=_("Delete cache (logout)"), command=delete_spotify_cache)
 deletecache_btn.pack(side="left", padx=5)
 
 settingsstatus_text = tk.StringVar()
@@ -1008,6 +1026,9 @@ now_playing_image_label.pack(padx=10, pady=10)
 
 def checklist():
     global global_devices
+    if not spstatus:
+        checklistvar.set(_("failed_to_fetch_data_console"))
+        return
     try:
         #limit spotify api calls
         if global_devices:
@@ -1179,9 +1200,12 @@ def killswitch(reason=None):
         for proc in psutil.process_iter():
             if PROCNAME.lower() in proc.name().lower():
                 if (proc.pid!=current_pid) and (proc.pid!=parent_pid):
-                    proc.kill()
-                    processes+=1
-                    status.set(_("Killed Spotify process"))
+                    try:
+                        proc.kill()
+                        processes+=1
+                        status.set(_("Killed Spotify process"))
+                    except Exception:
+                        pass
         if processes>0:
             timestamped_print(f"Killed {processes} Spotify process(es). Reason: {reason}")
 
@@ -1285,7 +1309,7 @@ def pause_music(retries=3, delay=2):
             return  # Zakończ funkcję, jeśli się udało
         except Exception as e:
             if ("token" in str(e)) or ("Expecting value" in str(e)):
-                delete_spotify_cache()
+                delete_spotify_cache(str(e))
                 killswitch("Pausing music - Killed after deleting cache.")
                 return
             attempt += 1
@@ -1333,7 +1357,7 @@ def spotify_main():
             except Exception as ex:
                 timestamped_print(f"Error getting playback status: {error(ex)}")
                 if ("token" in str(ex)) or ("Expecting value" in str(ex)):
-                    delete_spotify_cache()
+                    delete_spotify_cache(str(ex))
         else:
             status.set(_("out_of_schedule"))
             pause_music()

@@ -77,7 +77,8 @@ translations = {
         "Select time slot:": "Wybierz przedział czasowy:",
         "Remove Playlist": "Usuń Playlistę",
         "Time slot": "Przedział czasowy",
-        "A new update is available for download": "Nowa aktualizacja jest dostępna do pobrania"
+        "A new update is available for download": "Nowa aktualizacja jest dostępna do pobrania",
+        "Delete cache (logout)": "Usuń cache (wyloguj)"
 
 
 
