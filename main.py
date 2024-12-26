@@ -129,40 +129,91 @@ def refresh_settings():
             var = setting_vars.get(key)
             var.set(config.get(key, False))
 
+def validate_client_credentials(client=None, secret=None):
+    global CLIENT_ID, CLIENT_SECRET
+    url = "https://accounts.spotify.com/api/token"
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+
+    if not (client and secret):
+        client=CLIENT_ID
+        secret=CLIENT_SECRET
+
+    data = {
+        "grant_type": "client_credentials",
+        "client_id": client,
+        "client_secret": secret
+    }
+    try:
+        response = requests.post(url, headers=headers, data=data)
+    except Exception:
+        response=""
+        timestamped_print("Failed validating client credentials, proceeding as usual.")
+    if response:
+        if "invalid" in response.text:
+            timestamped_print(f"Credentials are not valid: {error((response.status_code))} {error((response.text))}")
+            return False
+        return True
+    return False
+
+class fake_sp:
+    def __call__(self, *args, **kwargs):
+        timestamped_print(f"Credentials are not valid, Spotipy can't be initialized. Change CLIENT_ID and CLIENT_SECRET.")
+        status.set(_("failed_to_fetch_data_console"))
+
+    
+    def __getattr__(self, name):
+        return self
+
+
 def initialize_sp():
-    global sp, sp_anon
+    global sp, sp_anon, spstatus
     sp=None
     sp_anon=None
     if CLIENT_ID!="" and CLIENT_SECRET!="":
-
         try:
-            sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=CLIENT_ID,client_secret=CLIENT_SECRET,redirect_uri=REDIRECT_URI,scope=SCOPE))
+            if validate_client_credentials():
+                sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=CLIENT_ID,client_secret=CLIENT_SECRET,redirect_uri=REDIRECT_URI,scope=SCOPE))
+                spstatus=True
+                fetch_user_playlists()
+                timestamped_print("Spotipy initialized properly.")
+            else:
+                sp = fake_sp()
+                spstatus=False
             sp_anon = spotipy.Spotify(auth_manager=SpotifyAnon())
         except Exception as e:
             timestamped_print(f"Error during spotipy initalization: {error(e)}")
 
 def save_settings():
     global config, CLIENT_ID, CLIENT_SECRET, KILLSWITCH_ON, WEEKDAYS_ONLY, DEVICE_NAME, LANG, setting_entries, AUTO_SPOTIFY
-    config['CLIENT_ID'] = setting_entries['CLIENT_ID'].get()
-    config['CLIENT_SECRET'] = setting_entries['CLIENT_SECRET'].get()
-    config['DEVICE_NAME'] = setting_entries['DEVICE_NAME'].get()
-    config['LANG'] = language_var.get()
-    config['KILLSWITCH_ON'] = setting_vars['KILLSWITCH_ON'].get()
-    config['WEEKDAYS_ONLY'] = setting_vars['WEEKDAYS_ONLY'].get() 
-    config['AUTO_SPOTIFY'] = setting_vars['AUTO_SPOTIFY'].get() 
+    if validate_client_credentials(setting_entries['CLIENT_ID'].get(),setting_entries['CLIENT_SECRET'].get()):
+        config['CLIENT_ID'] = setting_entries['CLIENT_ID'].get()
+        config['CLIENT_SECRET'] = setting_entries['CLIENT_SECRET'].get()
+        config['DEVICE_NAME'] = setting_entries['DEVICE_NAME'].get()
+        config['LANG'] = language_var.get()
+        config['KILLSWITCH_ON'] = setting_vars['KILLSWITCH_ON'].get()
+        config['WEEKDAYS_ONLY'] = setting_vars['WEEKDAYS_ONLY'].get() 
+        config['AUTO_SPOTIFY'] = setting_vars['AUTO_SPOTIFY'].get() 
 
-
-    save_config(config)
-    refresh_settings()
-    config = load_config()
-    CLIENT_ID = config['CLIENT_ID']
-    CLIENT_SECRET = config['CLIENT_SECRET']
-    DEVICE_NAME = config['DEVICE_NAME']
-    KILLSWITCH_ON = config['KILLSWITCH_ON']
-    WEEKDAYS_ONLY = config['WEEKDAYS_ONLY']
-    AUTO_SPOTIFY = config['AUTO_SPOTIFY']
-    LANG = config['LANG']
-    initialize_sp()
+        save_config(config)
+        refresh_settings()
+        config = load_config()
+        CLIENT_ID = config['CLIENT_ID']
+        CLIENT_SECRET = config['CLIENT_SECRET']
+        DEVICE_NAME = config['DEVICE_NAME']
+        KILLSWITCH_ON = config['KILLSWITCH_ON']
+        WEEKDAYS_ONLY = config['WEEKDAYS_ONLY']
+        AUTO_SPOTIFY = config['AUTO_SPOTIFY']
+        LANG = config['LANG']
+        
+        string=_("Saved.")
+        settingsstatus_text.set(string)
+        initialize_sp()
+    else:
+        timestamped_print(f"Settings not saved.")
+        string=_("Couldn't save. Check console.")
+        settingsstatus_text.set(string)
 
 
 
@@ -247,6 +298,17 @@ def refresh_settings():
             var = setting_vars.get(key)
             var.set(config.get(key, False))
 
+def delete_spotify_cache():
+    if validate_client_credentials():
+        if os.path.exists(".cache"):
+            os.remove(".cache")
+            initialize_sp()
+            timestamped_print("Cache file with access token has been deleted.")
+            return True
+    else:
+        timestamped_print("Credentials are not valid and cached token can't be deleted. Change CLIENT_ID and CLIENT_SECRET.")
+        status.set(_("failed_to_fetch_data_console"))
+    return False
 
 setting_entries = {}
 setting_vars = {}
@@ -284,11 +346,23 @@ ttk.Checkbutton(settings_frame, text=_("Weekdays Only"), variable=setting_vars['
 setting_vars['AUTO_SPOTIFY'] = tk.BooleanVar(value=config.get('AUTO_SPOTIFY', False))
 ttk.Checkbutton(settings_frame, text=_("Auto Spotify"), variable=setting_vars['AUTO_SPOTIFY']).grid(row=6, columnspan=2, pady=5,padx=5)
 
-save_btn = ttk.Button(settings_frame, text=_("Save Settings"), command=save_settings)
-save_btn.grid(row=7, columnspan=2, pady=20)
+buttons_frame = ttk.Frame(settings_frame)
+buttons_frame.grid(row=7, column=0, columnspan=2, pady=10)
+
+save_btn = ttk.Button(buttons_frame, text=_("Save Settings"), command=save_settings)
+save_btn.pack(side="left", padx=5)
+
+deletecache_btn = ttk.Button(buttons_frame, text=_("Delete cache"), command=delete_spotify_cache)
+deletecache_btn.pack(side="left", padx=5)
+
+settingsstatus_text = tk.StringVar()
+settingsstatus_text.set("")
+
+settingsstatus = ttk.Label(settings_frame, textvariable=settingsstatus_text, wraplength=500, anchor="w")
+settingsstatus.grid(row=8, columnspan=2)
 
 text_label = ttk.Label(settings_frame, text="EN: After changing the language, restart the application to apply the changes. \nPL: Po zmianie języka zrestartuj aplikację, aby zastosować zmiany.", foreground="green")
-text_label.grid(row=8, columnspan=2, pady=10)
+text_label.grid(row=9, columnspan=2, pady=10)
 
 devices_list = tk.StringVar()
 devices_list.set("")
@@ -969,7 +1043,7 @@ def checklist():
 
     except Exception as ex:
         timestamped_print(f"Checklist error: {error(ex)}")
-        checklistvar.set(_("failed_to_fetch_data"))
+        checklistvar.set(_("failed_to_fetch_data_console"))
 
 
     
@@ -1185,6 +1259,11 @@ last_spotify_run=False
 def pause_music(retries=3, delay=2):
     global last_endtime, global_playback, last_spotify_run
     last_spotify_run = False
+
+    if not spstatus:
+        killswitch()
+        return
+    
     attempt = 0
     while attempt < retries:
         try:
@@ -1202,11 +1281,9 @@ def pause_music(retries=3, delay=2):
             return  # Zakończ funkcję, jeśli się udało
         except Exception as e:
             if ("token" in str(e)) or ("Expecting value" in str(e)):
-                if os.path.exists(".cache"):
-                    os.remove(".cache")
-                    initialize_sp()
-                    timestamped_print("Cache file with access token has been deleted.")
-                    return
+                delete_spotify_cache()
+                killswitch()
+                return
             attempt += 1
             timestamped_print(f"Error occurred, retrying... ({attempt}/{retries}, took {round(((datetime.now()-took_time).total_seconds()),2)}s) {error(e)}")
             t.sleep(delay)
@@ -1217,7 +1294,9 @@ global_playback = None
 global_devices = None
 def spotify_main():
     global last_playlist, global_playback, global_devices
-    if not is_paused: 
+    if not is_paused:
+        if not sp or not spstatus:
+            initialize_sp()
         if is_within_schedule():
             try:
                 current_playback = sp.current_playback()
@@ -1250,10 +1329,7 @@ def spotify_main():
             except Exception as ex:
                 timestamped_print(f"Error getting playback status: {error(ex)}")
                 if ("token" in str(ex)) or ("Expecting value" in str(ex)):
-                    if os.path.exists(".cache"):
-                        os.remove(".cache")
-                        initialize_sp()
-                        timestamped_print("Cache file with access token has been deleted.")
+                    delete_spotify_cache()
         else:
             status.set(_("out_of_schedule"))
             pause_music()
@@ -1264,13 +1340,17 @@ def spotify_main():
     update_now_playing_info()
 
 def main():
-    global CLIENT_ID, CLIENT_SECRET, config, newupdate
+    global CLIENT_ID, CLIENT_SECRET, config, newupdate, sp
     if(not CLIENT_ID or not CLIENT_SECRET):
         print(f"Create an app here (instructions are in README on Github):\nhttps://developer.spotify.com/dashboard (it should open automatically)")
         t.sleep(1.5)
         open_link("https://developer.spotify.com/dashboard")
         CLIENT_ID = input("Enter CLIENT_ID: ")
         CLIENT_SECRET = input("Enter CLIENT_SECRET: ")
+        while not validate_client_credentials():
+            print("Credentials are not valid.")
+            CLIENT_ID = input("Enter CLIENT_ID: ")
+            CLIENT_SECRET = input("Enter CLIENT_SECRET: ")
 
     try:
         with open(config_file, "r") as f:
@@ -1306,6 +1386,7 @@ def main():
     print('') # newline
     t.sleep(5)   
     refresh_settings()
+    sp=None
     initialize_sp()
     load_schedule_to_table()
         
