@@ -1345,16 +1345,17 @@ def main():
 
     def updatechecker_loop():
         global newupdate
+        newupdate=""
         try:
             response = requests.get("https://api.github.com/repos/sandrzejewskipl/spotify-scheduler/releases/latest")
+            if response:
+                if response.json()["tag_name"]:
+                    if response.json()["tag_name"]>version:
+                        newupdate=(f"| {_('A new update is available for download')}!")
+                        timestamped_print(f"A new update is available for download at https://github.com/sandrzejewskipl/spotify-scheduler/releases/latest (latest {response.json()['tag_name']} vs current {version})")
         except Exception:
             pass
-        newupdate=""
-        if response:
-            if response.json()["tag_name"]:
-                if response.json()["tag_name"]!=version:
-                    newupdate=(f"| {_('A new update is available for download')}!")
-                    timestamped_print(f"A new update is available for download at https://github.com/sandrzejewskipl/spotify-scheduler/releases/latest (latest {response.json()['tag_name']} vs current {version})")
+        
         root.after(600000, updatechecker_loop)
 
     loop()
