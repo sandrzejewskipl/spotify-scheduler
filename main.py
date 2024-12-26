@@ -20,7 +20,7 @@ from spotipy_anon import SpotifyAnon
 import logging
 
 print(f"! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
-version="1.7.0"
+version="1.7.1"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
@@ -72,9 +72,9 @@ def load_config():
             "CLIENT_ID": "",
             "CLIENT_SECRET": "",
             "DEVICE_NAME": "",
-            "KILLSWITCH_ON": False,
+            "KILLSWITCH_ON": True,
             "WEEKDAYS_ONLY": False,
-            "AUTO_SPOTIFY": False
+            "AUTO_SPOTIFY": True
         }
         try:
             config["DEVICE_NAME"] = platform.node()
@@ -83,11 +83,11 @@ def load_config():
     for key in required_keys:
         if key not in config:
             if key == "KILLSWITCH_ON":
-                config[key] = False 
+                config[key] = True 
             elif key == "WEEKDAYS_ONLY":
                 config[key] = False
             elif key == "AUTO_SPOTIFY":
-                config[key] = False
+                config[key] = True
             else:
                 config[key] = "" 
             timestamped_print(f"Missing key '{key}' set to default value.")
