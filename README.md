@@ -67,6 +67,8 @@ On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify
 - English (en)
 - Polish (pl)
 
+<b>After changing CLIENT_ID or CLIENT_SECRET or wanting to change Spotify account (do it by logging in to another account in the browser), click `Delete cache (logout)` button.</b>
+
 <b>DEVICE NAME</b> - name (or part of it) of the device in Spotify API that will play music. You can find the device name in the bottom-left corner or check the list of devices in the Settings tab. It defaults to host name.
 
 <b>Play music only on weekdays</b> - Music will only be played from Monday to Friday. <b>Default: </b>Off
