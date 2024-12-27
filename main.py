@@ -20,7 +20,7 @@ from spotipy_anon import SpotifyAnon
 import logging
 
 print(f"! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
-version="1.7.2"
+version="1.7.3"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
