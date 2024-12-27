@@ -30,10 +30,25 @@ Download an `.exe` file from the latest release <a href="https://github.com/sand
 A `spotify-scheduler_data` folder will be automatically created. This folder contains configuration files and needs to remain in the same directory as your .exe.
 
 On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify in a console. Then OAuth popup should open. You <b>need</b> to keep the console running; otherwise, closing it will cause the program to stop.
-## Running on Linux and MacOS (or Windows without using .exe)
+
+## Running on Linux
 <b>Clone the repository (by the command below, or download it)</b>
 
-`git clone https://github.com/sandrzejewskipl/spotify-scheduler.git`<br>
+`git clone https://github.com/sandrzejewskipl/spotify-scheduler.git`
+
+Inside Spotify Scheduler's directory run this command:
+
+`chmod +x run.sh`
+
+Now, you can run this app by running:
+
+`./run.sh`
+
+This script will take care of making sure that Python3 and dependencies are installed.
+## Running script manually
+<b>Clone the repository (by the command below, or download it)</b>
+
+`git clone https://github.com/sandrzejewskipl/spotify-scheduler.git`
 
 <b>Install dependencies:</b><br>
 Make sure you have <b>Python 3</b> installed. Then, download the required packages by running:

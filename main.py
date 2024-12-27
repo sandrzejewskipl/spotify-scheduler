@@ -1415,6 +1415,7 @@ def main():
         print(f"Create an app here (instructions are in README on Github):\nhttps://developer.spotify.com/dashboard (it should open automatically)")
         t.sleep(1.5)
         open_link("https://developer.spotify.com/dashboard")
+        t.sleep(1.5)
         CLIENT_ID = input("Enter CLIENT_ID: ")
         CLIENT_SECRET = input("Enter CLIENT_SECRET: ")
         while not validate_client_credentials():
