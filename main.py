@@ -20,7 +20,7 @@ from spotipy_anon import SpotifyAnon
 import logging
 
 print(f"! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
-version="1.7.3"
+version="1.7.4"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
@@ -302,7 +302,7 @@ def refresh_settings():
             var = setting_vars.get(key)
             var.set(config.get(key, False))
 
-def delete_spotify_cache(ex=None):
+def delete_spotify_cache(ex=""):
     if validate_client_credentials():
         if "access" in ex:
             try:
@@ -541,7 +541,7 @@ def is_valid_time_format(time_str):
     time_pattern = r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$"  # Hours: 00-23, Minutes: 00-59
     return re.match(time_pattern, time_str) is not None
 
-def add_entry(event=None):
+def add_entry():
     start_time = (start_time_entry.get()).replace(';',':')
     end_time = (end_time_entry.get()).replace(';',':')
 
