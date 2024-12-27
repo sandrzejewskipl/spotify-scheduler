@@ -678,7 +678,7 @@ def run_spotify():
             timestamped_print(f"Error during launching Spotify: {error(e)}")
     if os.name == 'posix':
         try:
-            if shutil.which(spotify):
+            if shutil.which('spotify'):
                 devnull = open(os.devnull, "w")
                 process = subprocess.Popen(["spotify"], stdout=devnull, stderr=devnull)
                 devnull.close()
@@ -698,7 +698,7 @@ def spotify_button_check():
             pass
     if os.name == 'posix':
         try:
-            if shutil.which(spotify):
+            if shutil.which('spotify'):
                 return True
         except Exception:
             pass
@@ -1060,7 +1060,7 @@ def checklist():
 
         if devices["devices"]:
             for device in devices["devices"]:
-                if DEVICE_NAME in device["name"].upper():
+                if DEVICE_NAME.lower() in device["name"].lower():
                     found_device = _("Device Found", device_name=device['name'])
                     volume=device['volume_percent']
                     if volume>10:
@@ -1073,12 +1073,19 @@ def checklist():
             playlist = _("Playlist Set")
         else:
             playlist = _("Playlist Missing")
-        if os.name == 'nt':
-            proces = (_("Spotify Is Turned Off")+"\n")
-            for proc in psutil.process_iter():
-                if PROCNAME.lower() in proc.name().lower():
-                    if (proc.pid!=current_pid) or (proc.pid!=parent_pid):
-                        proces = (_("Spotify Running")+"\n")
+        if spotify_button_check():
+            if os.name == 'nt':
+                proces = (_("Spotify Is Turned Off")+"\n")
+                for proc in psutil.process_iter():
+                    if PROCNAME.lower() in proc.name().lower():
+                        if (proc.pid!=current_pid) or (proc.pid!=parent_pid):
+                            proces = (_("Spotify Running")+"\n")
+            if os.name == 'posix':
+                proces = (_("Spotify Is Turned Off")+"\n")
+                for proc in psutil.process_iter():
+                    if proc.name().lower()=="spotify":
+                        if (proc.pid!=current_pid) or (proc.pid!=parent_pid):
+                            proces = (_("Spotify Running")+"\n")
         
         checklistvar.set(_("Checklist", process=proces, device=found_device, volume=volume, playlist=playlist))
 
@@ -1119,7 +1126,6 @@ def update_now_playing_info():
                 device_list+=(f"• {name} ")
                 if device.get("is_active"):
                     target_device_name = name
-                    break
         devices_string=f"{_('Detected devices')}:\n{device_list}"
         devices_list.set(devices_string)
 
@@ -1232,7 +1238,6 @@ def killswitch(reason=None):
         if os.name=='posix':
             try:
                 for proc in psutil.process_iter():
-                    print(proc.name().lower())
                     if proc.name().lower()=="spotify":
                         if (proc.pid!=current_pid) and (proc.pid!=parent_pid):
                             try:
@@ -1294,7 +1299,7 @@ def play_music():
 
         target_device = None
         for device in devices["devices"]:
-            if DEVICE_NAME in device["name"].upper():
+            if DEVICE_NAME.lower() in device["name"].lower():
                 target_device = device["id"]
                 break
 
@@ -1378,7 +1383,7 @@ def spotify_main():
                 active_device = None
                 if devices and "devices" in devices:
                     for device in devices["devices"]:
-                        if DEVICE_NAME in device["name"].upper():
+                        if DEVICE_NAME.lower() in device["name"].lower():
                             target_device = device["id"]
                         if device.get("is_active"):
                             active_device = device["id"]
