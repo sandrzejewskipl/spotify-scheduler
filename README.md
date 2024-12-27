@@ -3,7 +3,7 @@
 </p>
 
 # <a href="https://github.com/sandrzejewskipl/spotify-scheduler">Spotify Scheduler</a>
-This Python GUI application lets you schedule Spotify playlists to play at specific hours, minutes and seconds (e.g. 8:00-8:15:30). Use it to automate your listening experience and customize playback times according to your preferences. You can select different playlist for each time slot.
+This Python GUI application lets you schedule Spotify playlists to play at specific hours, minutes and seconds (e.g. 8:00-8:15:30). Use it to automate your listening experience and customize playback times according to your preferences. You can select different playlist for each time slot. It's a much easier alternative to music automation softwares.
 
 ![Now playing tab that display currently played song on Spotify, current time slot and checklist feature.](.github/img/now_playing.png)
 
