@@ -676,6 +676,14 @@ def run_spotify():
                 timestamped_print("Spotify not found.")
         except Exception as e:
             timestamped_print(f"Error during launching Spotify: {error(e)}")
+    if os.name == 'posix':
+        try:
+            if shutil.which(spotify):
+                devnull = open(os.devnull, "w")
+                process = subprocess.Popen(["spotify"], stdout=devnull, stderr=devnull)
+                devnull.close()
+        except Exception:
+            timestamped_print(f"Error during launching Spotify: {error(e)}")
             
 def spotify_button_check():
     if os.name == 'nt':
@@ -686,6 +694,14 @@ def spotify_button_check():
             userdir = os.path.join(os.environ['USERPROFILE'], 'AppData\\Roaming\\Spotify\\Spotify.exe')
             if os.path.exists(userdir):
                 return True
+        except Exception:
+            pass
+    if os.name == 'posix':
+        try:
+            if shutil.which(spotify):
+                return True
+        except Exception:
+            pass
     return False
 
 if spotify_button_check():
@@ -1200,18 +1216,33 @@ checklist_label.pack(padx=10, pady=5)
 def killswitch(reason=None):
     if KILLSWITCH_ON:
         processes=0
-        try:
-            for proc in psutil.process_iter():
-                if PROCNAME.lower() in proc.name().lower():
-                    if (proc.pid!=current_pid) and (proc.pid!=parent_pid):
-                        try:
-                            proc.kill()
-                            processes+=1
-                            status.set(_("Killed Spotify process"))
-                        except Exception:
-                            pass
-        except Exception as e:
-            timestamped_print(f"Kilswitch failed: {error(e)}")
+        if os.name=='nt':
+            try:
+                for proc in psutil.process_iter():
+                    if PROCNAME.lower() in proc.name().lower():
+                        if (proc.pid!=current_pid) and (proc.pid!=parent_pid):
+                            try:
+                                proc.kill()
+                                processes+=1
+                                status.set(_("Killed Spotify process"))
+                            except Exception:
+                                pass
+            except Exception as e:
+                timestamped_print(f"Kilswitch failed: {error(e)}")
+        if os.name=='posix':
+            try:
+                for proc in psutil.process_iter():
+                    print(proc.name().lower())
+                    if proc.name().lower()=="spotify":
+                        if (proc.pid!=current_pid) and (proc.pid!=parent_pid):
+                            try:
+                                proc.kill()
+                                processes+=1
+                                status.set(_("Killed Spotify process"))
+                            except Exception:
+                                pass
+            except Exception as e:
+                timestamped_print(f"Kilswitch failed: {error(e)}")
         if processes>0:
             timestamped_print(f"Killed {processes} Spotify process(es). Reason: {reason}")
 
