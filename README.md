@@ -72,9 +72,9 @@ On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify
 
 <b>Play music only on weekdays</b> - Music will only be played from Monday to Friday. <b>Default: </b>Off
 
-<b>Killswitch</b> - feature that kills the Spotify process(es) when an error with API occurs when pausing the playback. It prevents playing music out of schedule. (only on Windows) <b>Default: </b>On
+<b>Killswitch</b> - feature that kills the Spotify process(es) when an error with API occurs when pausing the playback. It prevents playing music out of schedule. <b>Default: </b>On
 
-<b>Auto-lunch spotify</b> - feature that automatically launches Spotify if the device is not detected on the devices list. (only on Windows) <b>Default: </b>On
+<b>Auto-lunch spotify</b> - feature that automatically launches Spotify if the device is not detected on the devices list. <b>Default: </b>On
 ### After changing CLIENT_ID or CLIENT_SECRET or wanting to change Spotify account (do it by logging in to another account in the browser), click `Delete cache (logout)` button.
 
 <h1 align="center"><a href="https://github.com/sandrzejewskipl/spotify-scheduler/releases/latest">Download latest release</a></h1>
