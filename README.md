@@ -90,6 +90,8 @@ On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify
 <b>Killswitch</b> - feature that kills the Spotify process(es) when an error with API occurs when pausing the playback. It prevents playing music out of schedule. <b>Default: </b>On
 
 <b>Auto-launch Spotify</b> - feature that automatically launches Spotify if the device is not detected on the devices list. <b>Default: </b>On
+
+For optimal stability and reliable playback automation, it's recommended to enable both the Killswitch and Auto-launch Spotify features.
 ### After changing CLIENT_ID or CLIENT_SECRET or wanting to change Spotify account (do it by logging in to another account in the browser), click `Delete cache (logout)` button.
 
 Settings, schedule and other data are stored in `spotify-scheduler_data` folder that will be automatically created. This folder needs to remain in the same directory as your downloaded app.
