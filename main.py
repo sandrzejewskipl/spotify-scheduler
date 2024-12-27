@@ -541,7 +541,7 @@ def is_valid_time_format(time_str):
     time_pattern = r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$"  # Hours: 00-23, Minutes: 00-59
     return re.match(time_pattern, time_str) is not None
 
-def add_entry():
+def add_entry(event=None):
     start_time = (start_time_entry.get()).replace(';',':')
     end_time = (end_time_entry.get()).replace(';',':')
 
