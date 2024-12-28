@@ -57,67 +57,41 @@ def bundle_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
-required_keys = [
-    "LANG", "CLIENT_ID", "CLIENT_SECRET", "DEVICE_NAME", 
-    "KILLSWITCH_ON", "WEEKDAYS_ONLY", "AUTO_SPOTIFY"
-]
-
 def load_config():
-    global required_keys
+    default_config = {
+        "LANG": "en",
+        "CLIENT_ID": "",
+        "CLIENT_SECRET": "",
+        "DEVICE_NAME": platform.node() if hasattr(platform, "node") else "",
+        "KILLSWITCH_ON": True,
+        "WEEKDAYS_ONLY": False,
+        "AUTO_SPOTIFY": True
+    }
+
     try:
         with open(config_file, "r") as f:
             config = json.load(f)
     except FileNotFoundError:
-        config = {
-            "LANG": "en",
-            "CLIENT_ID": "",
-            "CLIENT_SECRET": "",
-            "DEVICE_NAME": "",
-            "KILLSWITCH_ON": True,
-            "WEEKDAYS_ONLY": False,
-            "AUTO_SPOTIFY": True
-        }
-        try:
-            config["DEVICE_NAME"] = platform.node()
-        except Exception as e:
-            pass
-    for key in required_keys:
+        config = default_config.copy()
+
+    for key, default_value in default_config.items():
         if key not in config:
-            if key == "KILLSWITCH_ON":
-                config[key] = True 
-            elif key == "WEEKDAYS_ONLY":
-                config[key] = False
-            elif key == "AUTO_SPOTIFY":
-                config[key] = True
-            else:
-                config[key] = "" 
+            config[key] = default_value
             timestamped_print(f"Missing key '{key}' set to default value.")
 
     with open(config_file, "w") as file:
         json.dump(config, file, indent=4)
+
     return config
-load_config()
-
-
 
 # Load config
 config = load_config()
 
-CLIENT_ID = config['CLIENT_ID']
-CLIENT_SECRET = config['CLIENT_SECRET']
-DEVICE_NAME = config['DEVICE_NAME']
-KILLSWITCH_ON = config['KILLSWITCH_ON']
-WEEKDAYS_ONLY = config['WEEKDAYS_ONLY']
-AUTO_SPOTIFY = config['AUTO_SPOTIFY']
-LANG = config['LANG']
-
 REDIRECT_URI = "http://localhost:23918"
 SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private"
-PROCNAME = "spotify.exe"
 
 def _(key, **kwargs):
-    global LANG
-    text = translations.get(LANG, {}).get(key, key)
+    text = translations.get(config['LANG'], {}).get(key, key)
     return text.format(**kwargs)
 
 # Function to refresh fields in the settings tab
@@ -131,15 +105,14 @@ def refresh_settings():
             var.set(config.get(key, False))
 
 def validate_client_credentials(client=None, secret=None):
-    global CLIENT_ID, CLIENT_SECRET
     url = "https://accounts.spotify.com/api/token"
     headers = {
         "Content-Type": "application/x-www-form-urlencoded"
     }
 
     if not (client and secret):
-        client=CLIENT_ID
-        secret=CLIENT_SECRET
+        client=config['CLIENT_ID']
+        secret=config['CLIENT_SECRET']
 
     data = {
         "grant_type": "client_credentials",
@@ -174,10 +147,10 @@ def initialize_sp():
     global sp, sp_anon, spstatus
     sp=None
     sp_anon=None
-    if CLIENT_ID!="" and CLIENT_SECRET!="":
+    if config['CLIENT_ID']!="" and config['CLIENT_SECRET']!="":
         try:
             if validate_client_credentials():
-                sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=CLIENT_ID,client_secret=CLIENT_SECRET,redirect_uri=REDIRECT_URI,scope=SCOPE))
+                sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=config['CLIENT_ID'],client_secret=config['CLIENT_SECRET'],redirect_uri=REDIRECT_URI,scope=SCOPE))
                 spstatus=True
                 fetch_user_playlists()
                 timestamped_print("Spotipy initialized properly.")
@@ -189,33 +162,38 @@ def initialize_sp():
             timestamped_print(f"Error during spotipy initalization: {error(e)}")
 
 def save_settings():
-    global config, CLIENT_ID, CLIENT_SECRET, KILLSWITCH_ON, WEEKDAYS_ONLY, DEVICE_NAME, LANG, setting_entries, AUTO_SPOTIFY
+    global config, setting_entries
+
+    for key, entry in setting_entries.items():
+        value = setting_entries[key].get()
+        if not value.strip():
+            timestamped_print(f"Settings not saved. Complete all fields.")
+            string=_("Couldn't save. Complete all fields.")
+            settingsstatus_text.set(string)
+            return
     if validate_client_credentials(setting_entries['CLIENT_ID'].get(),setting_entries['CLIENT_SECRET'].get()):
         config['CLIENT_ID'] = setting_entries['CLIENT_ID'].get()
         config['CLIENT_SECRET'] = setting_entries['CLIENT_SECRET'].get()
         config['DEVICE_NAME'] = setting_entries['DEVICE_NAME'].get()
-        config['LANG'] = language_var.get()
+        langstring=""
+        lastlang = config['LANG']
+        if config['LANG']!=language_var.get():
+            config['LANG'] = language_var.get()
+            langstring=f" {_('Restart the app to apply the language change.')} "
         config['KILLSWITCH_ON'] = setting_vars['KILLSWITCH_ON'].get()
         config['WEEKDAYS_ONLY'] = setting_vars['WEEKDAYS_ONLY'].get() 
         config['AUTO_SPOTIFY'] = setting_vars['AUTO_SPOTIFY'].get() 
 
         save_config(config)
-        refresh_settings()
         config = load_config()
-        CLIENT_ID = config['CLIENT_ID']
-        CLIENT_SECRET = config['CLIENT_SECRET']
-        DEVICE_NAME = config['DEVICE_NAME']
-        KILLSWITCH_ON = config['KILLSWITCH_ON']
-        WEEKDAYS_ONLY = config['WEEKDAYS_ONLY']
-        AUTO_SPOTIFY = config['AUTO_SPOTIFY']
-        LANG = config['LANG']
-        
-        string=_("Saved.")
-        settingsstatus_text.set(string)
+        refresh_settings()
+        string=_("Settings saved.")
+        config['LANG'] = lastlang #set current language to previous, because otherwise it looks bad - some elements are in previous language, some are in current
+        settingsstatus_text.set(string+langstring)
         initialize_sp()
     else:
         timestamped_print(f"Settings not saved.")
-        string=_("Couldn't save. Check console.")
+        string=_("Couldn't save. Credentials are not valid.")
         settingsstatus_text.set(string)
 
 
@@ -344,17 +322,17 @@ language_combobox['values'] = ('en', 'pl')
 language_combobox.grid(row=0, column=1, padx=10, pady=5)
 
 # CLIENT ID
-ttk.Label(settings_frame, text="CLIENT ID").grid(row=1, column=0, padx=10, pady=5, sticky=tk.E)
+ttk.Label(settings_frame, text="Client ID").grid(row=1, column=0, padx=10, pady=5, sticky=tk.E)
 setting_entries['CLIENT_ID'] = ttk.Entry(settings_frame, width=50)
 setting_entries['CLIENT_ID'].grid(row=1, column=1, padx=10, pady=5)
 
 # CLIENT SECRET
-ttk.Label(settings_frame, text="CLIENT SECRET").grid(row=2, column=0, padx=10, pady=5, sticky=tk.E)
+ttk.Label(settings_frame, text="Client secret").grid(row=2, column=0, padx=10, pady=5, sticky=tk.E)
 setting_entries['CLIENT_SECRET'] = ttk.Entry(settings_frame, show="*", width=50)
 setting_entries['CLIENT_SECRET'].grid(row=2, column=1, padx=10, pady=5)
 
 # DEVICE NAME
-ttk.Label(settings_frame, text="DEVICE NAME").grid(row=3, column=0, padx=10, pady=5, sticky=tk.E)
+ttk.Label(settings_frame, text=_("Device name")).grid(row=3, column=0, padx=10, pady=5, sticky=tk.E)
 setting_entries['DEVICE_NAME'] = ttk.Entry(settings_frame, width=50)
 setting_entries['DEVICE_NAME'].grid(row=3, column=1, padx=10, pady=5)
 
@@ -381,16 +359,16 @@ settingsstatus_text = tk.StringVar()
 settingsstatus_text.set("")
 
 settingsstatus = ttk.Label(settings_frame, textvariable=settingsstatus_text, wraplength=500, anchor="w")
-settingsstatus.grid(row=8, columnspan=2)
+settingsstatus.grid(row=8, columnspan=2, padx=10)
 
 text_label = ttk.Label(settings_frame, text="EN: After changing the language, restart the application to apply the changes. \nPL: Po zmianie języka zrestartuj aplikację, aby zastosować zmiany.", foreground="green")
-text_label.grid(row=9, columnspan=2, pady=10)
+text_label.grid(row=9, columnspan=2, padx=10, sticky='w')
 
 devices_list = tk.StringVar()
 devices_list.set("")
 
 devices_label = ttk.Label(settings_frame, textvariable=devices_list, wraplength=500, anchor="w")
-devices_label.place(x=10, y=350)
+devices_label.grid(row=10, columnspan=2, pady=20, padx=10, sticky='w')
 
 
 
@@ -1060,7 +1038,7 @@ def checklist():
 
         if devices["devices"]:
             for device in devices["devices"]:
-                if DEVICE_NAME.lower() in device["name"].lower():
+                if config['DEVICE_NAME'].lower() in device["name"].lower():
                     found_device = _("Device Found", device_name=device['name'])
                     volume=device['volume_percent']
                     if volume>10:
@@ -1077,7 +1055,7 @@ def checklist():
             if os.name == 'nt':
                 proces = (_("Spotify Is Turned Off")+"\n")
                 for proc in psutil.process_iter():
-                    if PROCNAME.lower() in proc.name().lower():
+                    if "spotify.exe" in proc.name().lower():
                         if (proc.pid!=current_pid) or (proc.pid!=parent_pid):
                             proces = (_("Spotify Running")+"\n")
             if os.name == 'posix':
@@ -1220,12 +1198,12 @@ checklist_label.pack(padx=10, pady=5)
 
 # Spotipy main functions
 def killswitch(reason=None):
-    if KILLSWITCH_ON:
+    if config['KILLSWITCH_ON']:
         processes=0
         if os.name=='nt':
             try:
                 for proc in psutil.process_iter():
-                    if PROCNAME.lower() in proc.name().lower():
+                    if "spotify.exe" in proc.name().lower():
                         if (proc.pid!=current_pid) and (proc.pid!=parent_pid):
                             try:
                                 proc.kill()
@@ -1254,7 +1232,7 @@ def killswitch(reason=None):
 last_endtime=None
 def is_within_schedule(schedule_file=schedule_file):
     match=False
-    global last_schedule, WEEKDAYS_ONLY, last_endtime
+    global last_schedule, last_endtime
     last_schedule=''
     try:
         with open(schedule_file, "r+") as file:
@@ -1267,7 +1245,7 @@ def is_within_schedule(schedule_file=schedule_file):
                     end_time = datetime.strptime(end_str, "%H:%M:%S" if ":" in end_str and end_str.count(":") == 2 else "%H:%M").time()
                     if start_time <= now <= end_time:
                         weekno = datetime.today().weekday()
-                        if not WEEKDAYS_ONLY:
+                        if not config['WEEKDAYS_ONLY']:
                             weekno = 0
                         if weekno < 5:
                             last_schedule=line
@@ -1297,7 +1275,7 @@ def play_music():
                 last_spotify_run=False
         else:
             status.set(_( "no_active_device"))
-            if spotify_button_check() and AUTO_SPOTIFY and not last_spotify_run:
+            if spotify_button_check() and config['AUTO_SPOTIFY'] and not last_spotify_run:
                 timestamped_print("Trying to run spotify.")
                 run_spotify()
                 last_spotify_run = True
@@ -1360,7 +1338,7 @@ def spotify_main():
                 active_device = None
                 if devices and "devices" in devices:
                     for device in devices["devices"]:
-                        if DEVICE_NAME.lower() in device["name"].lower():
+                        if config['DEVICE_NAME'].lower() in device["name"].lower():
                             target_device = device
                         if device.get("is_active"):
                             active_device = device
@@ -1387,30 +1365,20 @@ def spotify_main():
     update_now_playing_info()
 
 def main():
-    global CLIENT_ID, CLIENT_SECRET, config, newupdate, sp
-    if(not CLIENT_ID or not CLIENT_SECRET):
+    global config, newupdate, sp
+    if(not config['CLIENT_ID'] or not config['CLIENT_SECRET']):
         print(f"Create an app here (instructions are in README on Github):\nhttps://developer.spotify.com/dashboard (it should open automatically)")
         t.sleep(1.5)
         open_link("https://developer.spotify.com/dashboard")
         t.sleep(1.5)
-        CLIENT_ID = input("Enter CLIENT_ID: ")
-        CLIENT_SECRET = input("Enter CLIENT_SECRET: ")
+        config['CLIENT_ID'] = input("Enter CLIENT_ID: ")
+        config['CLIENT_SECRET'] = input("Enter CLIENT_SECRET: ")
         while not validate_client_credentials():
-            CLIENT_ID = input("Enter CLIENT_ID: ")
-            CLIENT_SECRET = input("Enter CLIENT_SECRET: ")
+            config['CLIENT_ID'] = input("Enter CLIENT_ID: ")
+            config['CLIENT_SECRET'] = input("Enter CLIENT_SECRET: ")
 
-    try:
-        with open(config_file, "r") as f:
-            config = json.load(f)
-    except FileNotFoundError:
-        config = {}
-
-    config['CLIENT_ID'] = CLIENT_ID
-    config['CLIENT_SECRET'] = CLIENT_SECRET
-
-    # Save to config.json
-    with open(config_file, "w") as f:
-        json.dump(config, f, indent=4)
+        with open(config_file, "w") as f:
+            json.dump(config, f, indent=4)
 
     print(f"# Spotify Scheduler v{ver} made by Szymon Andrzejewski (https://szymonandrzejewski.pl)")
     print("# Github repository: https://github.com/sandrzejewskipl/spotify-scheduler/")
@@ -1430,8 +1398,7 @@ def main():
                     print(f'{line.strip()}')
     except Exception as e:
         timestamped_print(f"Error during reading schedule: {error(e)}")     
-    print('') # newline
-    t.sleep(5)   
+    print('') # newline  
     refresh_settings()
     initialize_sp()
     load_schedule_to_table()

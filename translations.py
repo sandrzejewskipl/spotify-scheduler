@@ -4,6 +4,7 @@ translations = {
         "Title": "Tytuł",
         "Artist": "Artysta",
         "Device": "Urządzenie",
+        "Device name": "Nazwa urządzenia",
         "State": "Stan",
         "Schedule": "Harmonogram",
         "Now Playing": "Teraz odtwarzane",
@@ -66,7 +67,7 @@ translations = {
         "Killed Spotify process": "Zabito proces Spotify",
         "no_active_device": "Brak urządzenia Spotify",
         "Playback has been paused.": "Odtwarzanie zostało wstrzymane.",
-        "check_schedule": "Sprawdź poniższy harmonogram na dziś i dostosuj go w razie potrzeby. Skrypt zostanie uruchomiony za 5 sekund.\n",
+        "check_schedule": "Sprawdź poniższy harmonogram na dziś i dostosuj go w razie potrzeby.\n",
         "out_of_schedule": "Czas poza harmonogramem. Odtwarzanie nie zostało zatrzymane.",
         "out_of_schedule_paused": "Czas poza harmonogramem. Odtwarzanie jest zatrzymane.",
         "Language": "Język",
@@ -78,7 +79,12 @@ translations = {
         "Remove Playlist": "Usuń Playlistę",
         "Time slot": "Przedział czasowy",
         "A new update is available for download": "Nowa aktualizacja jest dostępna do pobrania",
-        "Delete cache (logout)": "Usuń cache (wyloguj)"
+        "Delete cache (logout)": "Usuń cache (wyloguj)",
+        "Couldn't save. Check console.": "Nie udało się zapisać. Sprawdź konsolę.",
+        "Couldn't save. Credentials are not valid.": "Nie udało się zapisać. Dane uwierzytelniające są nieprawidłowe.",
+        "Settings saved.": "Zapisano ustawienia.",
+        "Couldn't save. Complete all fields.": "Nie udało się zapisać. Uzupełnij wszystkie pola.",
+        "Restart the app to apply the language change.": "Aby zastosować zmianę języka, uruchom ponownie aplikację."
 
 
 
@@ -112,7 +118,7 @@ translations = {
         "failed_to_fetch_data_console": "Failed to fetch data. Check console.",
         "no_playback": "Nothing is playing right now.",
         "no_active_device": "No Spotify device",
-        "check_schedule": "Check the schedule for today below and adjust it if needed. The script will run in 5 seconds.\n",
+        "check_schedule": "Check the schedule for today below and adjust it if needed.\n",
         "out_of_schedule": "Out of schedule. Playback has not been stopped.",
         "out_of_schedule_paused": "Out of schedule. Playback is stopped."
     }
