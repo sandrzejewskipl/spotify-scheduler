@@ -21,15 +21,18 @@ import logging
 from packaging import version
 
 print(f"! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
-ver="1.7.4"
-config_file="config.json"
-schedule_file="schedule.txt"
-default_schedule_file='default-schedule.txt'
-log_file="output.log"
-schedule_playlists_file = "schedule_playlists.json"
+VER="1.7.4"
+CONFIG_FILE="config.json"
+SCHEDULE_FILE="schedule.txt"
+DEFAULT_SCHEDULE_FILE='default-schedule.txt'
+LOG_FILE="output.log"
+SCHEDULE_PLAYLISTS_FILE = "schedule_playlists.json"
 
-current_pid = os.getpid()
-parent_pid = psutil.Process(current_pid).parent().pid
+try:
+    current_pid = os.getpid()
+    parent_pid = psutil.Process(current_pid).parent().pid
+except Exception:
+    parent_pid = None
 
 def timestamped_print(message):
     current_time = datetime.now().isoformat(sep=" ", timespec="seconds")
@@ -69,7 +72,7 @@ def load_config():
     }
 
     try:
-        with open(config_file, "r") as f:
+        with open(CONFIG_FILE, "r") as f:
             config = json.load(f)
     except FileNotFoundError:
         config = default_config.copy()
@@ -79,16 +82,13 @@ def load_config():
             config[key] = default_value
             timestamped_print(f"Missing key '{key}' set to default value.")
 
-    with open(config_file, "w") as file:
+    with open(CONFIG_FILE, "w") as file:
         json.dump(config, file, indent=4)
 
     return config
 
 # Load config
 config = load_config()
-
-REDIRECT_URI = "http://localhost:23918"
-SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private"
 
 def _(key, **kwargs):
     text = translations.get(config['LANG'], {}).get(key, key)
@@ -147,6 +147,9 @@ def initialize_sp():
     global sp, sp_anon, spstatus
     sp=None
     sp_anon=None
+    REDIRECT_URI = "http://localhost:23918"
+    SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private"
+    
     if config['CLIENT_ID']!="" and config['CLIENT_SECRET']!="":
         try:
             if validate_client_credentials():
@@ -203,7 +206,7 @@ def save_settings():
 
 # Creating a GUI window
 root = tk.Tk()
-root.title(f"Spotify Scheduler v{ver}")
+root.title(f"Spotify Scheduler v{VER}")
 root.geometry("800x600")
 root.resizable(False, False) 
 
@@ -246,7 +249,7 @@ info_text = tk.Text(info_frame, wrap="word", height=10, width=70, font=("Arial",
 info_text.pack(expand=True, pady=20, padx=20)
 
 info_text.insert("insert", _( "Spotify Scheduler") + "\n", "header")
-info_text.insert("insert", f"{_('Version')}: {ver}\n")
+info_text.insert("insert", f"{_('Version')}: {VER}\n")
 info_text.insert("insert", f"{_('Author')}: ")
 info_text.insert("insert", f"Szymon Andrzejewski\n", "link1")
 
@@ -265,8 +268,8 @@ info_text.tag_bind("link2", "<Button-1>", lambda e: open_link("https://github.co
 info_text.config(state="disabled")
 
 # Function to save configuration
-def save_config(config, config_file=config_file):
-    with open(config_file, "w") as f:
+def save_config(config, CONFIG_FILE=CONFIG_FILE):
+    with open(CONFIG_FILE, "w") as f:
         json.dump(config, f, indent=4)
     timestamped_print("The configuration has been saved.")
 
@@ -372,7 +375,7 @@ devices_label.grid(row=10, columnspan=2, pady=20, padx=10, sticky='w')
 
 
 
-log_file = open(log_file, "a", encoding="utf-8")
+LOG_FILE = open(LOG_FILE, "a", encoding="utf-8")
 
 # Redirecting stdout to console and file
 class Logger:
@@ -389,11 +392,11 @@ class Logger:
         self.file.flush()
         self.terminal.flush()
 
-sys.stdout = Logger(log_file, sys.__stdout__)
+sys.stdout = Logger(LOG_FILE, sys.__stdout__)
 
 def load_schedule_to_table():
     try:
-        with open(schedule_file, "r") as file:
+        with open(SCHEDULE_FILE, "r") as file:
             lines = file.readlines()
             schedule_table.delete(*schedule_table.get_children())
             for line in lines:
@@ -403,12 +406,13 @@ def load_schedule_to_table():
         timestamped_print("Schedule loaded into table.")
         refresh_playlist_gui()
     except FileNotFoundError:
-        timestamped_print("The file schedule.txt does not exist.")
+        timestamped_print(f"Schedule file does not exist, it will be created now from default.")
+        replace_schedule_with_default()
     except Exception as e:
         timestamped_print(f"Error during loading schedule: {error(e)}")
 def save_default_schedule():
     try:
-        shutil.copy(schedule_file, default_schedule_file)
+        shutil.copy(SCHEDULE_FILE, DEFAULT_SCHEDULE_FILE)
         load_schedule_to_table()
         timestamped_print("Schedule loaded into table.")
     except Exception as e:
@@ -416,7 +420,7 @@ def save_default_schedule():
         
 def replace_schedule_with_default():
     try:
-        shutil.copy(default_schedule_file, schedule_file)
+        shutil.copy(DEFAULT_SCHEDULE_FILE, SCHEDULE_FILE)
         timestamped_print("Setting schedule to default.")
         load_schedule_to_table()
         generate_schedule_playlists()
@@ -427,9 +431,9 @@ def replace_schedule_with_default():
 
 # Create default schedule
 def generate_default(force=True):
-    global default_schedule_file, default_schedule
-    if (not os.path.exists(default_schedule_file)) or force==True:
-        with open(default_schedule_file, "w") as file:
+    global DEFAULT_SCHEDULE_FILE, default_schedule
+    if (not os.path.exists(DEFAULT_SCHEDULE_FILE)) or force==True:
+        with open(DEFAULT_SCHEDULE_FILE, "w") as file:
             default_schedule = """8:45-8:55
 9:40-9:45
 10:30-10:45
@@ -455,7 +459,7 @@ def save_schedule_from_table():
         rows.sort(key=lambda x: datetime.strptime(x[0], "%H:%M:%S" if ":" in x[0] and x[0].count(":") == 2 else "%H:%M"))
 
         # Save sorted entries to file
-        with open(schedule_file, "w") as file:
+        with open(SCHEDULE_FILE, "w") as file:
             for start_time, end_time in rows:
                 file.write(f"{start_time}-{end_time}\n")
 
@@ -467,8 +471,8 @@ def save_schedule_from_table():
 def generate_schedule_playlists():
     try:
         new_data={}
-        if os.path.exists(schedule_playlists_file):
-            with open(schedule_playlists_file, "r+") as json_file:
+        if os.path.exists(SCHEDULE_PLAYLISTS_FILE):
+            with open(SCHEDULE_PLAYLISTS_FILE, "r+") as json_file:
                 data = json.load(json_file)
                 if "default" in data:
                     default_key=data["default"]
@@ -477,14 +481,14 @@ def generate_schedule_playlists():
                 json_file.truncate()
                 json.dump(new_data, json_file, indent=4)
         else:
-            with open(schedule_playlists_file, "w") as json_file:
+            with open(SCHEDULE_PLAYLISTS_FILE, "w") as json_file:
                 json.dump(new_data, json_file, indent=4)
     except Exception as e:
         timestamped_print(f"Error during saving playlists file: {error(e)}")
 def get_playlist_for_schedule(key=None):
-    global last_schedule, schedule_playlists_file
+    global last_schedule, SCHEDULE_PLAYLISTS_FILE
     try:
-        with open(schedule_file, "r+") as file:
+        with open(SCHEDULE_FILE, "r+") as file:
             lines = file.readlines()
             now = datetime.now().time()
             if key==None:
@@ -497,7 +501,7 @@ def get_playlist_for_schedule(key=None):
                             key=line
             if key:
                 try:
-                    with open(schedule_playlists_file, "r") as file:
+                    with open(SCHEDULE_PLAYLISTS_FILE, "r") as file:
                         data = json.load(file)
                         key = key.strip()
                         if key in data:
@@ -511,6 +515,9 @@ def get_playlist_for_schedule(key=None):
                     generate_schedule_playlists()
                 except Exception as e:
                     timestamped_print(f"Error during loading playlists file: {error(e)}")
+    except FileNotFoundError:
+        timestamped_print(f"Schedule file does not exist, it will be created now from default.")
+        replace_schedule_with_default()              
     except Exception as e:
         timestamped_print(f"Error during reading schedule: {error(e)}")
     return False
@@ -711,7 +718,7 @@ status_label.pack(side="right", padx=10)
 # Load playlist scheduling
 def load_schedule_playlists():
     try:
-        with open(schedule_playlists_file, "r") as file:
+        with open(SCHEDULE_PLAYLISTS_FILE, "r") as file:
             return json.load(file)
     except (FileNotFoundError, json.JSONDecodeError):
         return {"default": ""} 
@@ -719,7 +726,7 @@ def load_schedule_playlists():
 # Save playlist scheduling
 def save_schedule_playlists():
     try:
-        with open(schedule_playlists_file, "w") as file:
+        with open(SCHEDULE_PLAYLISTS_FILE, "w") as file:
             json.dump(schedule_playlists, file, indent=4)
         timestamped_print("Schedule playlists saved successfully.")
     except Exception as e:
@@ -728,21 +735,26 @@ def save_schedule_playlists():
 # Load default scheduled playlists
 schedule_playlists = load_schedule_playlists()
 
-# Read schedule file
-def read_schedule_file():
+# Read schedule file for playlists
+def playlist_read_schedule_file():
     try:
-        with open("schedule.txt", "r") as file:
-            return ["default"] + [line.strip() for line in file.readlines()] 
+        with open(SCHEDULE_FILE, "r") as file:
+            lines = [line.strip() for line in file.readlines()]
+            # Check each line against the regex
+            valid_lines = [
+                line for line in lines if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line)
+            ]
+            return ["default"] + valid_lines
     except FileNotFoundError:
         return ["default"]
 
-schedule = read_schedule_file()
+schedule = playlist_read_schedule_file()
 selected_time = tk.StringVar()
 
 def refresh_playlist_gui(last=None):
     global schedule, schedule_playlists
 
-    schedule = read_schedule_file()
+    schedule = playlist_read_schedule_file()
     schedule_playlists = load_schedule_playlists()
 
     schedule_with_ids = [f"{hour} ({get_playlist_id_for_hour(hour)})" for hour in schedule]
@@ -960,11 +972,12 @@ def fetch_user_playlists():
     try:
         playlists = sp.current_user_playlists()
         playlist_table.delete(*playlist_table.get_children())  
-        for playlist in playlists['items']:
-            if playlist: 
-                playlist_name = playlist['name']
-                playlist_id = playlist['id']
-                playlist_table.insert("", "end", values=(playlist_name, playlist_id))
+        if playlists and 'items' in playlists:
+            for playlist in playlists['items']:
+                if playlist: 
+                    playlist_name = playlist['name']
+                    playlist_id = playlist['id']
+                    playlist_table.insert("", "end", values=(playlist_name, playlist_id))
     except Exception as e:
         timestamped_print(f"Error downloading user playlists: {error(e)}")
 
@@ -1036,7 +1049,7 @@ def checklist():
         volume = _("Check Manually")
         proces = ''
 
-        if devices["devices"]:
+        if devices and "devices" in devices:
             for device in devices["devices"]:
                 if config['DEVICE_NAME'].lower() in device["name"].lower():
                     found_device = _("Device Found", device_name=device['name'])
@@ -1230,12 +1243,12 @@ def killswitch(reason=None):
             timestamped_print(f"Killed {processes} Spotify process(es). Reason: {reason}")
 
 last_endtime=None
-def is_within_schedule(schedule_file=schedule_file):
+def is_within_schedule():
     match=False
     global last_schedule, last_endtime
     last_schedule=''
     try:
-        with open(schedule_file, "r+") as file:
+        with open(SCHEDULE_FILE, "r+") as file:
             lines = file.readlines()
             now = datetime.now().time()
             for line in lines:
@@ -1243,16 +1256,12 @@ def is_within_schedule(schedule_file=schedule_file):
                     start_str, end_str = line.strip().split("-")
                     start_time = datetime.strptime(start_str, "%H:%M:%S" if ":" in start_str and start_str.count(":") == 2 else "%H:%M").time()
                     end_time = datetime.strptime(end_str, "%H:%M:%S" if ":" in end_str and end_str.count(":") == 2 else "%H:%M").time()
-                    if start_time <= now <= end_time:
-                        weekno = datetime.today().weekday()
-                        if not config['WEEKDAYS_ONLY']:
-                            weekno = 0
-                        if weekno < 5:
-                            last_schedule=line
-                            last_endtime=datetime.combine(datetime.now(), end_time)
-                            match=True
+                    if start_time <= now <= end_time and (not config['WEEKDAYS_ONLY'] or datetime.today().weekday() < 5):
+                        last_schedule=line
+                        last_endtime=datetime.combine(datetime.now(), end_time)
+                        match=True
     except FileNotFoundError:
-        timestamped_print(f"The file schedule.txt does not exist, it will be created now from default.")
+        timestamped_print(f"Schedule file does not exist, it will be created now from default.")
         replace_schedule_with_default()
     except Exception as e:
         timestamped_print(f"Error during reading schedule: {error(e)}")
@@ -1300,14 +1309,15 @@ def pause_music(retries=3, delay=2):
             current_playback = sp.current_playback()
             global_playback = current_playback
 
-            if current_playback and current_playback["is_playing"]:
-                sp.pause_playback()
-                delay=""
-                if last_endtime:
-                    delay=f"(Delay: {round(((datetime.now()-last_endtime).total_seconds()),2)}s)"
-                timestamped_print(f"Playback has been paused. {delay}")
+            if current_playback and "is_playing" in current_playback:
+                if current_playback["is_playing"]:
+                    sp.pause_playback()
+                    delay=""
+                    if last_endtime:
+                        delay=f"(Delay: {round(((datetime.now()-last_endtime).total_seconds()),2)}s)"
+                    timestamped_print(f"Playback has been paused. {delay}")
             status.set(_("out_of_schedule_paused"))
-            return  # Zakończ funkcję, jeśli się udało
+            return
         except Exception as e:
             if ("token" in str(e)) or ("Expecting value" in str(e)):
                 delete_spotify_cache(str(e))
@@ -1377,21 +1387,21 @@ def main():
             config['CLIENT_ID'] = input("Enter CLIENT_ID: ")
             config['CLIENT_SECRET'] = input("Enter CLIENT_SECRET: ")
 
-        with open(config_file, "w") as f:
+        with open(CONFIG_FILE, "w") as f:
             json.dump(config, f, indent=4)
 
-    print(f"# Spotify Scheduler v{ver} made by Szymon Andrzejewski (https://szymonandrzejewski.pl)")
+    print(f"# Spotify Scheduler v{VER} made by Szymon Andrzejewski (https://szymonandrzejewski.pl)")
     print("# Github repository: https://github.com/sandrzejewskipl/spotify-scheduler/")
     print(_( "check_schedule"))
     try:
-        with open(schedule_file, 'r') as file:
+        with open(SCHEDULE_FILE, 'r') as file:
             lines = file.readlines()
             for line in lines:
                 if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
                     print(f'{line.strip()}')
     except FileNotFoundError:
         replace_schedule_with_default()
-        with open(schedule_file, 'r') as file:
+        with open(SCHEDULE_FILE, 'r') as file:
             lines = file.readlines()
             for line in lines:
                 if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
@@ -1431,7 +1441,7 @@ def main():
             now = datetime.now().strftime("%H:%M:%S")
             if lastdate!=now: #update title only when time changes
                 lastdate=now
-                root.title(f"Spotify Scheduler v{ver} | {now} {newupdate}")
+                root.title(f"Spotify Scheduler v{VER} | {now} {newupdate}")
         except Exception:
             pass
 
@@ -1447,10 +1457,10 @@ def main():
             response = requests.get("https://api.github.com/repos/sandrzejewskipl/spotify-scheduler/releases/latest")
             if response:
                 if response.json()["tag_name"]:
-                    if is_canonical(ver) and is_canonical(response.json()["tag_name"]):
-                        if version.parse(response.json()["tag_name"])>version.parse(ver):
+                    if is_canonical(VER) and is_canonical(response.json()["tag_name"]):
+                        if version.parse(response.json()["tag_name"])>version.parse(VER):
                             newupdate=(f"| {_('A new update is available for download')}!")
-                            timestamped_print(f"A new update is available for download at https://github.com/sandrzejewskipl/spotify-scheduler/releases/latest (latest {response.json()['tag_name']} vs current {ver})")
+                            timestamped_print(f"A new update is available for download at https://github.com/sandrzejewskipl/spotify-scheduler/releases/latest (latest {response.json()['tag_name']} vs current {VER})")
         except Exception:
             pass
         
