@@ -487,39 +487,24 @@ def generate_schedule_playlists():
         timestamped_print(f"Error during saving playlists file: {error(e)}")
 def get_playlist_for_schedule(key=None):
     global last_schedule, SCHEDULE_PLAYLISTS_FILE
-    try:
-        with open(SCHEDULE_FILE, "r+") as file:
-            lines = file.readlines()
-            now = datetime.now().time()
-            if key==None:
-                for line in lines:
-                    if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
-                        start_str, end_str = line.strip().split("-")
-                        start_time = datetime.strptime(start_str, "%H:%M:%S" if ":" in start_str and start_str.count(":") == 2 else "%H:%M").time()
-                        end_time = datetime.strptime(end_str, "%H:%M:%S" if ":" in end_str and end_str.count(":") == 2 else "%H:%M").time()
-                        if start_time <= now <= end_time:
-                            key=line
-            if key:
-                try:
-                    with open(SCHEDULE_PLAYLISTS_FILE, "r") as file:
-                        data = json.load(file)
-                        key = key.strip()
-                        if key in data:
-                            return data[key]
+    if key==None:
+        key=is_within_schedule()
+    if key:
+        try:
+            with open(SCHEDULE_PLAYLISTS_FILE, "r") as file:
+                data = json.load(file)
+                key = key.strip()
+                if key in data:
+                    return data[key]
 
-                        elif "default" in data:
-                            return data["default"]
-                        else:
-                            return None
-                except FileNotFoundError:
-                    generate_schedule_playlists()
-                except Exception as e:
-                    timestamped_print(f"Error during loading playlists file: {error(e)}")
-    except FileNotFoundError:
-        timestamped_print(f"Schedule file does not exist, it will be created now from default.")
-        replace_schedule_with_default()              
-    except Exception as e:
-        timestamped_print(f"Error during reading schedule: {error(e)}")
+                elif "default" in data:
+                    return data["default"]
+                else:
+                    return None
+        except FileNotFoundError:
+            generate_schedule_playlists()
+        except Exception as e:
+            timestamped_print(f"Error during loading playlists file: {error(e)}")
     return False
 
 def is_valid_time_format(time_str):
@@ -1259,7 +1244,7 @@ def is_within_schedule():
                     if start_time <= now <= end_time and (not config['WEEKDAYS_ONLY'] or datetime.today().weekday() < 5):
                         last_schedule=line
                         last_endtime=datetime.combine(datetime.now(), end_time)
-                        match=True
+                        match=line.strip()
     except FileNotFoundError:
         timestamped_print(f"Schedule file does not exist, it will be created now from default.")
         replace_schedule_with_default()
