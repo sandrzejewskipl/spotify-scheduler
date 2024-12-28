@@ -18,9 +18,10 @@ from translations import translations
 import os
 from spotipy_anon import SpotifyAnon
 import logging
+from packaging import version
 
 print(f"! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
-version="1.7.4"
+ver="1.7.4"
 config_file="config.json"
 schedule_file="schedule.txt"
 default_schedule_file='default-schedule.txt'
@@ -224,7 +225,7 @@ def save_settings():
 
 # Creating a GUI window
 root = tk.Tk()
-root.title(f"Spotify Scheduler v{version}")
+root.title(f"Spotify Scheduler v{ver}")
 root.geometry("800x600")
 root.resizable(False, False) 
 
@@ -267,7 +268,7 @@ info_text = tk.Text(info_frame, wrap="word", height=10, width=70, font=("Arial",
 info_text.pack(expand=True, pady=20, padx=20)
 
 info_text.insert("insert", _( "Spotify Scheduler") + "\n", "header")
-info_text.insert("insert", f"{_('Version')}: {version}\n")
+info_text.insert("insert", f"{_('Version')}: {ver}\n")
 info_text.insert("insert", f"{_('Author')}: ")
 info_text.insert("insert", f"Szymon Andrzejewski\n", "link1")
 
@@ -1411,7 +1412,7 @@ def main():
     with open(config_file, "w") as f:
         json.dump(config, f, indent=4)
 
-    print("# Spotify Scheduler made by Szymon Andrzejewski (https://szymonandrzejewski.pl)")
+    print(f"# Spotify Scheduler v{ver} made by Szymon Andrzejewski (https://szymonandrzejewski.pl)")
     print("# Github repository: https://github.com/sandrzejewskipl/spotify-scheduler/")
     print(_( "check_schedule"))
     try:
@@ -1463,11 +1464,14 @@ def main():
             now = datetime.now().strftime("%H:%M:%S")
             if lastdate!=now: #update title only when time changes
                 lastdate=now
-                root.title(f"Spotify Scheduler v{version} | {now} {newupdate}")
+                root.title(f"Spotify Scheduler v{ver} | {now} {newupdate}")
         except Exception:
             pass
 
         root.after(100, title_loop, lastdate)
+
+    def is_canonical(version):
+        return re.match(r'^([1-9][0-9]*!)?(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))*((a|b|rc)(0|[1-9][0-9]*))?(\.post(0|[1-9][0-9]*))?(\.dev(0|[1-9][0-9]*))?$', version) is not None
 
     def updatechecker_loop():
         global newupdate
@@ -1476,9 +1480,10 @@ def main():
             response = requests.get("https://api.github.com/repos/sandrzejewskipl/spotify-scheduler/releases/latest")
             if response:
                 if response.json()["tag_name"]:
-                    if response.json()["tag_name"]>version:
-                        newupdate=(f"| {_('A new update is available for download')}!")
-                        timestamped_print(f"A new update is available for download at https://github.com/sandrzejewskipl/spotify-scheduler/releases/latest (latest {response.json()['tag_name']} vs current {version})")
+                    if is_canonical(ver) and is_canonical(response.json()["tag_name"]):
+                        if version.parse(response.json()["tag_name"])>version.parse(ver):
+                            newupdate=(f"| {_('A new update is available for download')}!")
+                            timestamped_print(f"A new update is available for download at https://github.com/sandrzejewskipl/spotify-scheduler/releases/latest (latest {response.json()['tag_name']} vs current {ver})")
         except Exception:
             pass
         
