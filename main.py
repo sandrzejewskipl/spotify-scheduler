@@ -147,22 +147,20 @@ def validate_client_credentials(client=None, secret=None):
     }
     try:
         response = requests.post(url, headers=headers, data=data)
-    except Exception:
-        response=""
-        timestamped_print("Failed validating client credentials.")
-    if response:
-        if "invalid" in response.text:
-            timestamped_print(f"Credentials are not valid: {error((response.status_code))} {error((response.text))}")
-            return False
-        return True
-    return False
+    except Exception as e:
+        timestamped_print(f"Failed validating client credentials: {error(e)}")
+        return False
+    if response.status_code!=200:
+        timestamped_print(f"Credentials are not valid: {error((response.status_code))} {error((response.text))}")
+        return False
+    return True
 
 fakesplastprint=t.time()
 class fake_sp:
     def __call__(self, *args, **kwargs):
         global fakesplastprint
         if t.time()-fakesplastprint>=1:
-            timestamped_print(f"Credentials are not valid, Spotipy can't be initialized. Change CLIENT_ID and CLIENT_SECRET or fix internet connection.")
+            timestamped_print(f"Spotipy can't be initialized. Change CLIENT_ID and CLIENT_SECRET or fix internet connection.")
             fakesplastprint=t.time()
         status.set(_("failed_to_fetch_data_console"))
 
@@ -330,6 +328,7 @@ def delete_spotify_cache(ex=""):
     else:
         timestamped_print("Credentials are not valid and cached token can't be deleted. Change CLIENT_ID and CLIENT_SECRET.")
         status.set(_("failed_to_fetch_data_console"))
+    initialize_sp()
     return False
 
 setting_entries = {}
@@ -1284,35 +1283,16 @@ last_playlist=''
 def play_music():
     global last_playlist, global_devices, last_spotify_run
     try:
-        if global_devices:
-            devices = global_devices
-        else:
-            devices = sp.devices()
-
-        if not devices["devices"]:
-            status.set(_( "no_active_device"))
-            if spotify_button_check() and AUTO_SPOTIFY and not last_spotify_run:
-                timestamped_print("Trying to run spotify.")
-                run_spotify()
-                last_spotify_run = True
-            return
-
-        target_device = None
-        for device in devices["devices"]:
-            if DEVICE_NAME.lower() in device["name"].lower():
-                target_device = device["id"]
-                break
-
         if target_device:
             PLAYLIST_ID=get_playlist_for_schedule()
             if PLAYLIST_ID:
-                sp.start_playback(device_id=target_device, context_uri=f"spotify:playlist:{PLAYLIST_ID}")
+                sp.start_playback(device_id=target_device["id"], context_uri=f"spotify:playlist:{PLAYLIST_ID}")
                 last_playlist=PLAYLIST_ID
                 playlist_info=get_playlist_info(PLAYLIST_ID)
                 string=""
                 if playlist_info:
                     string=f"Playlist: {playlist_info['name']}, Owner: {playlist_info['owner']}"
-                timestamped_print(f"Music playing on {device['name']}. {string}")
+                timestamped_print(f"Music playing on {target_device['name']}. {string}")
                 last_spotify_run=False
         else:
             status.set(_( "no_active_device"))
@@ -1320,7 +1300,7 @@ def play_music():
                 timestamped_print("Trying to run spotify.")
                 run_spotify()
                 last_spotify_run = True
-
+            return
 
     except Exception as ex:
         timestamped_print(f"Error while playing: {error(ex)}")
@@ -1363,7 +1343,7 @@ def pause_music(retries=3, delay=2):
 global_playback = None
 global_devices = None
 def spotify_main():
-    global last_playlist, global_playback, global_devices
+    global last_playlist, global_playback, global_devices, target_device
     if not is_paused:
         if not sp or not spstatus:
             initialize_sp()
@@ -1372,24 +1352,20 @@ def spotify_main():
                 current_playback = sp.current_playback()
                 global_playback = current_playback
 
-                devices=None
-                try:
-                    devices = sp.devices()
-                    global_devices = devices
-                except Exception:
-                    pass
+                devices = sp.devices()
+                global_devices = devices
 
                 target_device = None
                 active_device = None
                 if devices and "devices" in devices:
                     for device in devices["devices"]:
                         if DEVICE_NAME.lower() in device["name"].lower():
-                            target_device = device["id"]
+                            target_device = device
                         if device.get("is_active"):
-                            active_device = device["id"]
+                            active_device = device
                     
                 PLAYLIST_ID=get_playlist_for_schedule()
-                if (not current_playback) or (not current_playback["is_playing"]) or (not last_playlist==PLAYLIST_ID) or (target_device!=active_device):
+                if (not current_playback) or (not current_playback["is_playing"]) or (not last_playlist==PLAYLIST_ID) or (target_device["id"]!=active_device["id"]):
                     if PLAYLIST_ID:
                         play_music()
                     else:
@@ -1419,7 +1395,6 @@ def main():
         CLIENT_ID = input("Enter CLIENT_ID: ")
         CLIENT_SECRET = input("Enter CLIENT_SECRET: ")
         while not validate_client_credentials():
-            print("Credentials are not valid.")
             CLIENT_ID = input("Enter CLIENT_ID: ")
             CLIENT_SECRET = input("Enter CLIENT_SECRET: ")
 
@@ -1457,7 +1432,6 @@ def main():
     print('') # newline
     t.sleep(5)   
     refresh_settings()
-    sp=None
     initialize_sp()
     load_schedule_to_table()
         
