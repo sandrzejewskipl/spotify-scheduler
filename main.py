@@ -1125,7 +1125,7 @@ def checklist():
                 proces = (_("Spotify Is Turned Off")+"\n")
                 for proc in psutil.process_iter():
                     try:
-                        if "spotify.exe" in proc.name().lower():
+                        if "spotify.exe"==proc.name().lower():
                             if (proc.pid!=current_pid) or (proc.pid!=parent_pid):
                                 proces = (_("Spotify Running")+"\n")
                     except Exception:
@@ -1281,7 +1281,7 @@ def killswitch(reason=None):
             try:
                 for proc in psutil.process_iter():
                     try:
-                        if "spotify.exe" in proc.name().lower():
+                        if "spotify.exe"==proc.name().lower():
                             if (proc.pid!=current_pid) and (proc.pid!=parent_pid):
                                     proc.kill()
                                     processes+=1
