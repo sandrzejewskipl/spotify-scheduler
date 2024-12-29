@@ -154,7 +154,7 @@ class fake_sp:
 
 
 def initialize_sp():
-    global sp, sp_anon, spstatus
+    global sp, sp_anon, spstatus, last_spotify_run
     sp=None
     sp_anon=None
     REDIRECT_URI = "http://localhost:23918"
@@ -167,6 +167,7 @@ def initialize_sp():
                 spstatus=True
                 fetch_user_playlists()
                 timestamped_print("Spotipy initialized properly.")
+                last_spotify_run=False
             else:
                 sp = fake_sp()
                 spstatus=False
@@ -1083,9 +1084,6 @@ now_playing_image_label.pack(padx=10, pady=10)
 
 def checklist():
     global global_devices
-    if not spstatus:
-        checklistvar.set(_("Spotify credentials are not valid.\nChange CLIENT ID and CLIENT SECRET or fix internet connection."))
-        return
     try:
         #limit spotify api calls
         if global_devices:
@@ -1144,6 +1142,7 @@ def update_now_playing_info():
     global lastfetch, playlist_name, lastresponse, playlist_info_str, lasttype, lastalbum
     if not spstatus:
         now_playing_label.config(text=(_("Spotify credentials are not valid.\nChange CLIENT ID and CLIENT SECRET or fix internet connection.")))
+        checklistvar.set(_("Spotify credentials are not valid.\nChange CLIENT ID and CLIENT SECRET or fix internet connection."))
         return
     try:
         # LIMIT SPOTIFY API CALLS
