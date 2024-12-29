@@ -147,10 +147,9 @@ class fake_sp:
         global fakesplastprint
         if t.time()-fakesplastprint>=1:
             timestamped_print(f"Spotipy can't be initialized. Change CLIENT_ID and CLIENT_SECRET or fix internet connection.")
+            status.set(_("failed_to_fetch_data_console"))
             fakesplastprint=t.time()
-        status.set(_("failed_to_fetch_data_console"))
 
-    
     def __getattr__(self, name):
         return self
 
