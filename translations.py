@@ -4,7 +4,7 @@ translations = {
         "Title": "Tytuł",
         "Artist": "Artysta",
         "Device": "Urządzenie",
-        "Device name": "Nazwa urządzenia",
+        "Device name:": "Nazwa urządzenia:",
         "State": "Stan",
         "Schedule": "Harmonogram",
         "Now Playing": "Teraz odtwarzane",
@@ -33,6 +33,7 @@ translations = {
         "Running": "Działa",
         "Resume Automation": "Wznów automatyzację",
         "Pause Automation": "Wstrzymaj automatyzację",
+        "Automation is paused": "Automatyzacja jest wstrzymana",
         "Pause music and stop automation": "Zapauzuj muzykę i wstrzymaj automatyzację",
         "Run Spotify": "Uruchom Spotify",
         "Restore default": "Przywróć domyślne",
@@ -70,7 +71,7 @@ translations = {
         "check_schedule": "Sprawdź poniższy harmonogram na dziś i dostosuj go w razie potrzeby.\n",
         "out_of_schedule": "Czas poza harmonogramem. Odtwarzanie nie zostało zatrzymane.",
         "out_of_schedule_paused": "Czas poza harmonogramem. Odtwarzanie jest zatrzymane.",
-        "Language": "Język",
+        "Language:": "Język:",
         "Detected devices": "Wykryte urządzenia",
         "Playlist not set": "Playlista nie ustawiona",
         "same as default": "tak jak default",
@@ -84,7 +85,26 @@ translations = {
         "Couldn't save. Credentials are not valid.": "Nie udało się zapisać. Dane uwierzytelniające są nieprawidłowe.",
         "Settings saved.": "Zapisano ustawienia.",
         "Couldn't save. Complete all fields.": "Nie udało się zapisać. Uzupełnij wszystkie pola.",
-        "Restart the app to apply the language change.": "Aby zastosować zmianę języka, uruchom ponownie aplikację."
+        "Restart the app to apply the language change.": "Aby zastosować zmianę języka, uruchom ponownie aplikację.",
+        "Enter Spotify Credentials": "Wprowadź dane uwierzytelniające Spotify",
+        "set_up_box1": "Utwórz nową aplikację na Spotify for Developers\nwedług instrukcji poniżej:\nhttps://developer.spotify.com/dashboard",
+        "set_up_box2": "- Wypełnij App name i App description według własnego uznania.\n- Dodaj http://localhost:23918 do Redirect URis.\n- Zaznacz Web API i kliknij przycisk Save.\n\nNastępnie przejdź do utworzonej aplikacji,\nkliknij na Settings i wypełnij wymagane dane poniżej.",
+        "Open Spotify for Developers": "Otwórz Spotify for Developers",
+        "Console": "Konsola",
+        "Spotify credentials are not valid.\nChange CLIENT ID and CLIENT SECRET or fix internet connection.": "Dane uwierzytelniające Spotify są nieprawidłowe.\nZmień CLIENT ID i CLIENT SECRET lub napraw połączenie internetowe.",
+        "fetched_playlists": "Pobrano {length} z {total} playlist(y).",
+        "Error: Incorrect time format.": "Nieprawidłowy format czasu.",
+        "Logged in as": "Zalogowano jako",
+        "Error: End time must be later than start time.": "Błąd: Godzina zakończenia musi być późniejsza niż godzina rozpoczęcia.",
+        "Added to schedule:": "Dodano do harmonogramu",
+        "Removed from schedule:": "Usunięto z harmonogramu",
+        "Error: Cannot add an empty entry.": "Błąd: Nie można dodać pustego wpisu.",
+        "No entry selected.": "Nie zaznaczono żadnych wpisu.",
+        "Default schedule has been restored.": "Domyślny harmonogram został przywrócony.",
+        "Default schedule has been saved.": "Domyślny harmonogram został zapisany.",
+        "Default schedule has been loaded.": "Domyślny harmonogram został wczytany.",
+        "Schedule has been reloaded.": "Harmonogram został przeładowany.",
+        "Playlist ID can't be blank.": "ID Playlisty nie może być puste.",
 
 
 
@@ -120,6 +140,9 @@ translations = {
         "no_active_device": "No Spotify device",
         "check_schedule": "Check the schedule for today below and adjust it if needed.\n",
         "out_of_schedule": "Out of schedule. Playback has not been stopped.",
-        "out_of_schedule_paused": "Out of schedule. Playback is stopped."
+        "out_of_schedule_paused": "Out of schedule. Playback is stopped.",
+        "set_up_box1": "Create a new app on Spotify for Developers\nfollowing the instructions below:\nhttps://developer.spotify.com/dashboard",
+        "set_up_box2": "- Fill out App name and App description as you wish.\n- Add http://localhost:23918 to Redirect URis.\n- Select Web API checkbox and click on Save button.\n\nNext go to your created application,\nclick on Settings and fill in the required details below.",
+        "fetched_playlists": "Fetched {length} out of {total} playlist(s)."
     }
 }

@@ -3,3 +3,4 @@ python-dotenv
 psutil
 pillow
 spotipy_anon
+packaging

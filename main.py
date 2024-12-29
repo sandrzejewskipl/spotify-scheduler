@@ -21,8 +21,7 @@ import logging
 from packaging import version
 import locale
 
-print(f"! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
-VER="1.7.4"
+VER="1.8.0"
 CONFIG_FILE="config.json"
 SCHEDULE_FILE="schedule.txt"
 DEFAULT_SCHEDULE_FILE='default-schedule.txt'
@@ -48,18 +47,23 @@ if not os.path.exists("spotify-scheduler_data"):
     os.makedirs("spotify-scheduler_data")
 
 os.chdir('spotify-scheduler_data')
-if os.name == 'nt':
-    os.system('title Spotify Scheduler Console')
+try:
+    if os.name == 'nt':
+        if sys.__stdout__:
+            os.system('title Spotify Scheduler Console')
+except Exception:
+    pass
 
 def bundle_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath("..")
+    # try:
+    #     # PyInstaller creates a temp folder and stores path in _MEIPASS
+    #     base_path = sys._MEIPASS
+    # except Exception:
+    #     base_path = os.path.abspath("..")
 
-    return os.path.join(base_path, relative_path)
+    # return os.path.join(base_path, relative_path)
+    return os.path.join(os.path.dirname(__file__), relative_path)
 
 def get_default_language():
     try:
@@ -136,7 +140,7 @@ def validate_client_credentials(client=None, secret=None):
         timestamped_print(f"Failed validating client credentials: {error(e)}")
         return False
     if response.status_code!=200:
-        timestamped_print(f"Credentials are not valid: {error((response.status_code))} {error((response.text))}")
+        timestamped_print(f"Credentials are not valid: {error((response.status_code))} {error((response.text)).strip()}")
         return False
     return True
 
@@ -146,20 +150,19 @@ class fake_sp:
         global fakesplastprint
         if t.time()-fakesplastprint>=1:
             timestamped_print(f"Spotipy can't be initialized. Change CLIENT_ID and CLIENT_SECRET or fix internet connection.")
+            status.set(_("failed_to_fetch_data_console"))
             fakesplastprint=t.time()
-        status.set(_("failed_to_fetch_data_console"))
 
-    
     def __getattr__(self, name):
         return self
 
 
 def initialize_sp():
-    global sp, sp_anon, spstatus
+    global sp, sp_anon, spstatus, last_spotify_run
     sp=None
     sp_anon=None
     REDIRECT_URI = "http://localhost:23918"
-    SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private"
+    SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative"
     
     if config['CLIENT_ID']!="" and config['CLIENT_SECRET']!="":
         try:
@@ -168,6 +171,7 @@ def initialize_sp():
                 spstatus=True
                 fetch_user_playlists()
                 timestamped_print("Spotipy initialized properly.")
+                last_spotify_run=False
             else:
                 sp = fake_sp()
                 spstatus=False
@@ -238,8 +242,42 @@ notebook.add(playlist_frame, text=_("Playlist"))
 settings_frame = ttk.Frame(notebook)
 notebook.add(settings_frame, text=_("Settings"))
 
+console_frame = ttk.Frame(notebook)
+notebook.add(console_frame, text=_("Console"))
+
 info_frame = ttk.Frame(notebook)
 notebook.add(info_frame, text=_("About"))
+
+LOG_FILE = open(LOG_FILE, "a", encoding="utf-8")
+
+console_text = tk.Text(console_frame, wrap="word", height=20, width=100, font=("Arial", 10))
+console_text.pack(expand=True, fill="both", padx=10, pady=10)
+
+# Redirecting stdout to console and file
+class Logger:
+    ANSI_ESCAPE = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+
+    def __init__(self, file, terminal, text_widget):
+        self.file = file
+        self.terminal = terminal
+        self.text_widget = text_widget
+
+    def write(self, message):
+        clean_message = self.ANSI_ESCAPE.sub('', message)
+        self.file.write(message)
+        if self.terminal:
+            self.terminal.write(message)
+        self.text_widget.insert(tk.END, clean_message)
+        self.text_widget.see(tk.END)
+        self.flush()
+
+    def flush(self):
+        self.file.flush()
+        if self.terminal:
+            self.terminal.flush()
+
+sys.stdout = Logger(LOG_FILE, sys.__stdout__, console_text)
+sys.stderr = Logger(LOG_FILE, sys.__stderr__, console_text)
 
 def open_link(url):
     try:
@@ -270,8 +308,8 @@ info_text.insert("insert", "https://github.com/sandrzejewskipl/Spotify-Scheduler
 info_text.insert("insert", f"\n{_('Made_with')}\n{_('Greetings')}\n\nMIT License - © 2024 Szymon Andrzejewski")
 
 info_text.tag_config("header", font=("Arial", 14, "bold"), justify="center")
-info_text.tag_config("link1", foreground="blue", underline=True)
-info_text.tag_config("link2", foreground="blue", underline=True)
+info_text.tag_config("link1", foreground="#1DB954", underline=True)
+info_text.tag_config("link2", foreground="#1DB954", underline=True)
 
 info_text.tag_bind("link1", "<Button-1>", lambda e: open_link("https://szymonandrzejewski.pl"))
 info_text.tag_bind("link2", "<Button-1>", lambda e: open_link("https://github.com/sandrzejewskipl/Spotify-Scheduler"))
@@ -328,27 +366,27 @@ setting_entries = {}
 setting_vars = {}
 
 # Language selection 
-ttk.Label(settings_frame, text=_("Language")).grid(row=0, column=0, padx=10, pady=5, sticky=tk.E)
+ttk.Label(settings_frame, text=_("Language:")).grid(row=0, column=0, padx=10, pady=5, sticky=tk.E)
 language_var = tk.StringVar(value=config.get('LANG', 'en'))
 
 language_combobox = ttk.Combobox(settings_frame, textvariable=language_var, state="readonly", width=47)
 language_combobox['values'] = ('en', 'pl')
-language_combobox.grid(row=0, column=1, padx=10, pady=5)
+language_combobox.grid(row=0, column=1, pady=5)
 
 # CLIENT ID
-ttk.Label(settings_frame, text="Client ID").grid(row=1, column=0, padx=10, pady=5, sticky=tk.E)
+ttk.Label(settings_frame, text="Client ID:").grid(row=1, column=0, padx=10, pady=5, sticky=tk.E)
 setting_entries['CLIENT_ID'] = ttk.Entry(settings_frame, width=50)
-setting_entries['CLIENT_ID'].grid(row=1, column=1, padx=10, pady=5)
+setting_entries['CLIENT_ID'].grid(row=1, column=1, pady=5)
 
 # CLIENT SECRET
-ttk.Label(settings_frame, text="Client secret").grid(row=2, column=0, padx=10, pady=5, sticky=tk.E)
+ttk.Label(settings_frame, text="Client secret:").grid(row=2, column=0, padx=10, pady=5, sticky=tk.E)
 setting_entries['CLIENT_SECRET'] = ttk.Entry(settings_frame, show="*", width=50)
-setting_entries['CLIENT_SECRET'].grid(row=2, column=1, padx=10, pady=5)
+setting_entries['CLIENT_SECRET'].grid(row=2, column=1, pady=5)
 
 # DEVICE NAME
-ttk.Label(settings_frame, text=_("Device name")).grid(row=3, column=0, padx=10, pady=5, sticky=tk.E)
+ttk.Label(settings_frame, text=_("Device name:")).grid(row=3, column=0, padx=10, pady=5, sticky=tk.E)
 setting_entries['DEVICE_NAME'] = ttk.Entry(settings_frame, width=50)
-setting_entries['DEVICE_NAME'].grid(row=3, column=1, padx=10, pady=5)
+setting_entries['DEVICE_NAME'].grid(row=3, column=1, pady=5)
 
 # SWITCHES
 setting_vars['KILLSWITCH_ON'] = tk.BooleanVar(value=config.get('KILLSWITCH_ON', False))
@@ -376,36 +414,15 @@ settingsstatus = ttk.Label(settings_frame, textvariable=settingsstatus_text, wra
 settingsstatus.grid(row=8, columnspan=2, padx=10)
 
 text_label = ttk.Label(settings_frame, text="EN: After changing the language, restart the application to apply the changes. \nPL: Po zmianie języka zrestartuj aplikację, aby zastosować zmiany.", foreground="green")
-text_label.grid(row=9, columnspan=2, padx=10, sticky='w')
+text_label.grid(row=9, columnspan=2, padx=10, sticky='w', pady=5)
 
 devices_list = tk.StringVar()
 devices_list.set("")
 
 devices_label = ttk.Label(settings_frame, textvariable=devices_list, wraplength=500, anchor="w")
-devices_label.grid(row=10, columnspan=2, pady=20, padx=10, sticky='w')
+devices_label.grid(row=10, columnspan=2, pady=10, padx=10, sticky='w')
 
-
-
-LOG_FILE = open(LOG_FILE, "a", encoding="utf-8")
-
-# Redirecting stdout to console and file
-class Logger:
-    def __init__(self, file, terminal):
-        self.file = file
-        self.terminal = terminal
-
-    def write(self, message):
-        self.file.write(message)
-        self.terminal.write(message)
-        self.flush() 
-
-    def flush(self):
-        self.file.flush()
-        self.terminal.flush()
-
-sys.stdout = Logger(LOG_FILE, sys.__stdout__)
-
-def load_schedule_to_table():
+def load_schedule_to_table(printstatus=True):
     try:
         with open(SCHEDULE_FILE, "r") as file:
             lines = file.readlines()
@@ -415,6 +432,8 @@ def load_schedule_to_table():
                     start_time, end_time = line.strip().split("-")
                     schedule_table.insert("", "end", values=(start_time, end_time))
         timestamped_print("Schedule loaded into table.")
+        if printstatus:
+            schedulevar.set(_("Schedule has been reloaded."))
         refresh_playlist_gui()
     except FileNotFoundError:
         timestamped_print(f"Schedule file does not exist, it will be created now from default.")
@@ -425,6 +444,7 @@ def save_default_schedule():
     try:
         shutil.copy(SCHEDULE_FILE, DEFAULT_SCHEDULE_FILE)
         load_schedule_to_table()
+        schedulevar.set(_("Default schedule has been saved."))
         timestamped_print("Schedule loaded into table.")
     except Exception as e:
         timestamped_print(f"Error during saving schedule: {error(e)}")
@@ -436,6 +456,7 @@ def replace_schedule_with_default():
         load_schedule_to_table()
         generate_schedule_playlists()
         refresh_playlist_gui()
+        schedulevar.set(_("Default schedule has been loaded."))
 
     except Exception as e:
         timestamped_print(f"Error while changing schedule: {error(e)}")
@@ -527,10 +548,12 @@ def add_entry(event=None):
     end_time = (end_time_entry.get()).replace(';',':')
 
     if not is_valid_time_format(start_time):
+        schedulevar.set(_("Error: Incorrect time format."))
         timestamped_print(f"Incorrect time format: {start_time}. Use HH:MM or HH:MM:SS.")
         return
 
     if not is_valid_time_format(end_time):
+        schedulevar.set(_("Error: Incorrect time format."))
         timestamped_print(f"Incorrect time format: {end_time}. Use HH:MM or HH:MM:SS.")
         return
 
@@ -538,6 +561,7 @@ def add_entry(event=None):
     end_dt = datetime.strptime(end_time, "%H:%M:%S" if ":" in end_time and end_time.count(":") == 2 else "%H:%M")
 
     if end_dt <= start_dt:
+        schedulevar.set(_("Error: End time must be later than start time."))
         timestamped_print("Error: End time must be later than start time.")
         return
 
@@ -545,9 +569,11 @@ def add_entry(event=None):
         schedule_table.insert("", "end", values=(start_time, end_time))
         start_time_entry.delete(0, tk.END)
         end_time_entry.delete(0, tk.END)
+        schedulevar.set(f"{_('Added to schedule:')}: {start_time} - {end_time}")
         timestamped_print(f"Added to schedule: {start_time} - {end_time}")
         save_schedule_from_table() 
     else:
+        schedulevar.set(_("Error: Cannot add an empty entry."))
         timestamped_print("Cannot add an empty entry.")
 
 
@@ -559,18 +585,21 @@ def delete_selected_entry():
             start_time, end_time = schedule_table.item(item, "values")
             remove_playlist(f"{start_time}-{end_time}")
             schedule_table.delete(item)
+        schedulevar.set(f"{_('Removed from schedule:')}: {start_time} - {end_time}")
         timestamped_print("The selected entry has been deleted.")
         save_schedule_from_table()
     else:
+        schedulevar.set(_("No entry selected."))
         timestamped_print("No entries have been marked for deletion.")
 
 def regenerate():
     generate_default()
     replace_schedule_with_default()
+    schedulevar.set(_("Default schedule has been restored."))
 
 # Schedule table
 columns = ("start", "end")
-schedule_table = ttk.Treeview(schedule_frame, columns=columns, show="headings", height=10)
+schedule_table = ttk.Treeview(schedule_frame, columns=columns, show="headings")
 schedule_table.heading("start", text=_("Start Time"))
 schedule_table.heading("end", text=_("End Time"))
 schedule_table.pack(fill="both", expand=True, padx=10, pady=(10, 0))
@@ -597,11 +626,16 @@ add_button.pack(side="left", padx=5)
 delete_button = ttk.Button(entry_frame, text=_("Delete Selected"), command=delete_selected_entry)
 delete_button.pack(side="left", padx=5)
 
+schedulevar = tk.StringVar()
+schedulevar.set("")
+
+# Checklist label
+schedule_label = ttk.Label(schedule_frame, textvariable=schedulevar, font=("Arial", 10))
+schedule_label.pack(fill="x", padx=15)
+
 # Buttons
 button_frame = ttk.Frame(schedule_frame)
 button_frame.pack(fill="x", padx=10, pady=10)
-
-
 
 replace_button = ttk.Button(button_frame, text=_("Load default"), command=replace_schedule_with_default)
 replace_button.pack(side="left", padx=5)
@@ -647,14 +681,14 @@ control_frame.pack(side="top", fill="x", padx=10, pady=5)
 def run_spotify():
     if os.name == 'nt':
         try:
-            result = subprocess.run(["where", "spotify"], capture_output=True, text=True, check=True)
-            subprocess.run(["spotify"])
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            userdir = os.path.join(os.environ['USERPROFILE'], 'AppData\\Roaming\\Spotify\\Spotify.exe')
-            if os.path.exists(userdir):
-                subprocess.Popen([userdir], shell=True)
+            if shutil.which('spotify'):
+                subprocess.run(["spotify"])
             else:
-                timestamped_print("Spotify not found.")
+                userdir = os.path.join(os.environ['USERPROFILE'], 'AppData\\Roaming\\Spotify\\Spotify.exe')
+                if os.path.exists(userdir):
+                    subprocess.Popen([userdir], shell=True)
+                else:
+                    timestamped_print("Spotify not found.")
         except Exception as e:
             timestamped_print(f"Error during launching Spotify: {error(e)}")
     if os.name == 'posix':
@@ -669,12 +703,12 @@ def run_spotify():
 def spotify_button_check():
     if os.name == 'nt':
         try:
-            result = subprocess.run(["where", "spotify"], capture_output=True, text=True, check=True)
-            return True
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            userdir = os.path.join(os.environ['USERPROFILE'], 'AppData\\Roaming\\Spotify\\Spotify.exe')
-            if os.path.exists(userdir):
+            if shutil.which('spotify'):
                 return True
+            else:
+                userdir = os.path.join(os.environ['USERPROFILE'], 'AppData\\Roaming\\Spotify\\Spotify.exe')
+                if os.path.exists(userdir):
+                    return True
         except Exception:
             pass
     if os.name == 'posix':
@@ -814,11 +848,12 @@ def change_playlist():
         
         schedule_playlists[current_time] = PLAYLIST_ID
         save_schedule_playlists()
-
+        playliststatus_text.set(_(""))
         timestamped_print(f"Playlist for {current_time} updated to {PLAYLIST_ID}.")
         refresh_playlist_gui(current_time)
         spotify_main()
     else:
+        playliststatus_text.set(_("Playlist ID can't be blank."))
         timestamped_print(f"Playlist ID can't be blank.")
 
 def remove_playlist(user_input=None):
@@ -909,18 +944,24 @@ playlist_image_label.grid(row=0, column=0, rowspan=3, sticky="nw")
 
 # name
 playlist_label = ttk.Label(playlist_info_frame, text=_("Playlist")+":")
-playlist_label.grid(row=0, column=1, padx=5, pady=2, sticky="nw")
+playlist_label.grid(row=0, column=1, padx=5, sticky="nw")
 
 # id/url
 playlist_entry_label = ttk.Label(playlist_info_frame, text=_("Playlist ID or link:"))
-playlist_entry_label.grid(row=1, column=1, padx=5, pady=2, sticky="w")
+playlist_entry_label.grid(row=1, column=1, padx=5, sticky="w")
 
 playlist_entry = ttk.Entry(playlist_info_frame, width=75)
-playlist_entry.grid(row=1, column=1, padx=125, pady=2)
+playlist_entry.grid(row=1, column=1, padx=125)
+
+playliststatus_text = tk.StringVar()
+playliststatus_text.set("")
+
+settingsstatus = ttk.Label(playlist_info_frame, textvariable=playliststatus_text, wraplength=500, anchor="w")
+settingsstatus.grid(row=3, column=1, columnspan=2)
 
 # Container for buttons
 buttons_frame = ttk.Frame(playlist_info_frame)
-buttons_frame.grid(row=2, column=1, columnspan=2, pady=10)
+buttons_frame.grid(row=2, column=1, columnspan=2)
 
 # Set Playlist button
 change_playlist_btn = ttk.Button(buttons_frame, text=_("Set Playlist"), command=change_playlist)
@@ -963,17 +1004,37 @@ scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=playlist_table
 playlist_table.configure(yscrollcommand=scrollbar.set)
 scrollbar.pack(side="right", fill="y")
 
-
+username=""
 def fetch_user_playlists():
+    global username
+    playlists = []
+    offset = 0
+    limit = 50
+    
+    while True:
+        try:
+            response = sp.current_user_playlists(limit=limit, offset=offset)
+            total=response['total']
+            playlists.extend(response['items'])
+            if len(response['items']) < limit:
+                break
+            offset += limit
+        except Exception:
+            break
     try:
-        playlists = sp.current_user_playlists()
+        user = sp.current_user()
+        username=(f"{_('Logged in as')}: {user['display_name']}\n\n")
+    except Exception as e:
+        pass
+    try:
         playlist_table.delete(*playlist_table.get_children())  
-        if playlists and 'items' in playlists:
-            for playlist in playlists['items']:
+        if playlists:
+            for playlist in playlists:
                 if playlist: 
                     playlist_name = playlist['name']
                     playlist_id = playlist['id']
                     playlist_table.insert("", "end", values=(playlist_name, playlist_id))
+            playlistsvar.set(f"{_('fetched_playlists', length=len(playlists), total=total)}")
     except Exception as e:
         timestamped_print(f"Error downloading user playlists: {error(e)}")
 
@@ -995,9 +1056,14 @@ playlist_table.bind("<ButtonRelease-1>", select_playlist)
 
 # load playlist button
 load_playlists_btn = ttk.Button(playlist_frame, text=_("Refresh Playlists"), command=fetch_user_playlists)
-load_playlists_btn.pack(side='left', pady=10, padx=10)
+load_playlists_btn.pack(side='left', pady=10, padx=(10,5))
 
+playlistsvar = tk.StringVar()
+playlistsvar.set("")
 
+# Checklist label
+playlists_label = ttk.Label(playlist_frame, textvariable=playlistsvar, font=("Arial", 10))
+playlists_label.pack(side='left', pady=10)
 
 def display_playlist_info(id):
     playlist_info = get_playlist_info(id)
@@ -1032,9 +1098,6 @@ now_playing_image_label.pack(padx=10, pady=10)
 
 def checklist():
     global global_devices
-    if not spstatus:
-        checklistvar.set(_("failed_to_fetch_data_console"))
-        return
     try:
         #limit spotify api calls
         if global_devices:
@@ -1064,15 +1127,21 @@ def checklist():
             if os.name == 'nt':
                 proces = (_("Spotify Is Turned Off")+"\n")
                 for proc in psutil.process_iter():
-                    if "spotify.exe" in proc.name().lower():
-                        if (proc.pid!=current_pid) or (proc.pid!=parent_pid):
-                            proces = (_("Spotify Running")+"\n")
+                    try:
+                        if "spotify.exe"==proc.name().lower():
+                            if (proc.pid!=current_pid) or (proc.pid!=parent_pid):
+                                proces = (_("Spotify Running")+"\n")
+                    except Exception:
+                        pass
             if os.name == 'posix':
                 proces = (_("Spotify Is Turned Off")+"\n")
                 for proc in psutil.process_iter():
-                    if proc.name().lower()=="spotify":
-                        if (proc.pid!=current_pid) or (proc.pid!=parent_pid):
-                            proces = (_("Spotify Running")+"\n")
+                    try:
+                        if proc.name().lower()=="spotify":
+                            if (proc.pid!=current_pid) or (proc.pid!=parent_pid):
+                                proces = (_("Spotify Running")+"\n")
+                    except Exception:
+                        pass
         
         checklistvar.set(_("Checklist", process=proces, device=found_device, volume=volume, playlist=playlist))
 
@@ -1091,7 +1160,10 @@ playlist_info_str=None
 lastalbum=None
 def update_now_playing_info():
     global lastfetch, playlist_name, lastresponse, playlist_info_str, lasttype, lastalbum
-    
+    if not spstatus:
+        now_playing_label.config(text=(_("Spotify credentials are not valid.\nChange CLIENT ID and CLIENT SECRET or fix internet connection.")))
+        checklistvar.set(_("Spotify credentials are not valid.\nChange CLIENT ID and CLIENT SECRET or fix internet connection."))
+        return
     try:
         # LIMIT SPOTIFY API CALLS
         if global_playback:
@@ -1113,7 +1185,7 @@ def update_now_playing_info():
                 device_list+=(f"• {name} ")
                 if device.get("is_active"):
                     target_device_name = name
-        devices_string=f"{_('Detected devices')}:\n{device_list}"
+        devices_string=f"{username}{_('Detected devices')}:\n{device_list}"
         devices_list.set(devices_string)
 
         if current_playback and "item" in current_playback and current_playback["item"]:
@@ -1135,9 +1207,8 @@ def update_now_playing_info():
             album = current_track['album']
 
             forcefetch=False
-            if album['name']!=lastalbum and lasttype=="album":
+            if album['name']!=lastalbum and lasttype!="playlist":
                 forcefetch=True
-
             if lastfetch != playing_playlist or forcefetch:
                 if playing_playlist:
                     try:
@@ -1212,27 +1283,27 @@ def killswitch(reason=None):
         if os.name=='nt':
             try:
                 for proc in psutil.process_iter():
-                    if "spotify.exe" in proc.name().lower():
-                        if (proc.pid!=current_pid) and (proc.pid!=parent_pid):
-                            try:
-                                proc.kill()
-                                processes+=1
-                                status.set(_("Killed Spotify process"))
-                            except Exception:
-                                pass
+                    try:
+                        if "spotify.exe"==proc.name().lower():
+                            if (proc.pid!=current_pid) and (proc.pid!=parent_pid):
+                                    proc.kill()
+                                    processes+=1
+                                    status.set(_("Killed Spotify process"))
+                    except Exception:
+                        pass
             except Exception as e:
                 timestamped_print(f"Kilswitch failed: {error(e)}")
         if os.name=='posix':
             try:
                 for proc in psutil.process_iter():
-                    if proc.name().lower()=="spotify":
-                        if (proc.pid!=current_pid) and (proc.pid!=parent_pid):
-                            try:
-                                proc.kill()
-                                processes+=1
-                                status.set(_("Killed Spotify process"))
-                            except Exception:
-                                pass
+                    try:
+                        if proc.name().lower()=="spotify":
+                            if (proc.pid!=current_pid) and (proc.pid!=parent_pid):
+                                    proc.kill()
+                                    processes+=1
+                                    status.set(_("Killed Spotify process"))
+                    except Exception:
+                        pass
             except Exception as e:
                 timestamped_print(f"Kilswitch failed: {error(e)}")
         if processes>0:
@@ -1368,57 +1439,84 @@ def spotify_main():
                 global_devices = sp.devices()
             except Exception:
                 pass
+    else:
+        status.set(_("Automation is paused"))
     update_now_playing_info()
 
 def main():
     global config, newupdate, sp
+    print(f"\n! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
+    print(f"# Spotify Scheduler v{VER} made by Szymon Andrzejewski (https://szymonandrzejewski.pl)")
+    print("# Github repository: https://github.com/sandrzejewskipl/spotify-scheduler/\n")  
     if(not config['CLIENT_ID'] or not config['CLIENT_SECRET']):
-        print(f"Create an app here (instructions are in README on Github):\nhttps://developer.spotify.com/dashboard (it should open automatically)")
-        t.sleep(1.5)
-        open_link("https://developer.spotify.com/dashboard")
-        t.sleep(1.5)
-        config['CLIENT_ID'] = input("Enter CLIENT_ID: ")
-        config['CLIENT_SECRET'] = input("Enter CLIENT_SECRET: ")
-        while not validate_client_credentials():
-            config['CLIENT_ID'] = input("Enter CLIENT_ID: ")
-            config['CLIENT_SECRET'] = input("Enter CLIENT_SECRET: ")
+        print(f"Create an app on Spotify for Developers (instructions are in README on Github):\nhttps://developer.spotify.com/dashboard")
+        def save_credentials():
+            if validate_client_credentials(client_id_entry.get(), client_secret_entry.get()):
+                config['CLIENT_ID'] = client_id_entry.get()
+                config['CLIENT_SECRET'] = client_secret_entry.get()
+                credentials_window.destroy()
+            else:
+                error_label.config(text=_("Couldn't save. Credentials are not valid."))
+
+        credentials_window = tk.Toplevel(root)
+        credentials_window.title(_("Enter Spotify Credentials"))
+        credentials_window.geometry("450x430")
+        credentials_window.resizable(False, False)
+        # Update geometry to get accurate dimensions
+        credentials_window.update_idletasks()
+        root.update_idletasks()
+        
+        # Calculate position to center the window
+        x = root.winfo_x() + (root.winfo_width() - credentials_window.winfo_width()) // 2
+        y = root.winfo_y() + (root.winfo_height() - credentials_window.winfo_height()) // 2
+        
+        # Set the new geometry with updated position
+        credentials_window.geometry(f"+{x}+{y}")
+
+        tk.Label(credentials_window, text=_("set_up_box1")).pack(pady=5)
+        def open_spotify_developers():
+            open_link("https://developer.spotify.com/dashboard")
+
+        open_button = ttk.Button(credentials_window, text=_("Open Spotify for Developers"), command=open_spotify_developers)
+        open_button.pack()
+        tk.Label(credentials_window, text=_("set_up_box2")).pack(pady=10)
+
+        tk.Label(credentials_window, text="Client ID:").pack(pady=(5,0))
+        client_id_entry = ttk.Entry(credentials_window, width=50)
+        client_id_entry.pack(pady=(0,5))
+
+        tk.Label(credentials_window, text="Client Secret:").pack(pady=(5,0))
+        client_secret_entry = ttk.Entry(credentials_window, width=50)
+        client_secret_entry.pack(pady=(0,5))
+
+        save_button = ttk.Button(credentials_window, text=_("Save Settings"), command=save_credentials)
+        save_button.pack(pady=(10,5))
+
+        error_label = tk.Label(credentials_window, text="", fg="red")
+        error_label.pack()
+
+        credentials_window.transient(root)
+        credentials_window.grab_set()
+
+        if os.name == 'nt':
+            root.iconbitmap(bundle_path("icon.ico"))
+            credentials_window.iconbitmap(bundle_path("icon.ico"))
+
+        root.wait_window(credentials_window)
 
         with open(CONFIG_FILE, "w") as f:
             json.dump(config, f, indent=4)
-
-    print(f"# Spotify Scheduler v{VER} made by Szymon Andrzejewski (https://szymonandrzejewski.pl)")
-    print("# Github repository: https://github.com/sandrzejewskipl/spotify-scheduler/")
-    print(_( "check_schedule"))
-    try:
-        with open(SCHEDULE_FILE, 'r') as file:
-            lines = file.readlines()
-            for line in lines:
-                if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
-                    print(f'{line.strip()}')
-    except FileNotFoundError:
-        replace_schedule_with_default()
-        with open(SCHEDULE_FILE, 'r') as file:
-            lines = file.readlines()
-            for line in lines:
-                if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
-                    print(f'{line.strip()}')
-    except Exception as e:
-        timestamped_print(f"Error during reading schedule: {error(e)}")     
-    print('') # newline  
+    if(not config['CLIENT_ID'] or not config['CLIENT_SECRET']):
+        timestamped_print("No credentials provided. Exiting.")
+        sys.exit()
+  
     refresh_settings()
     initialize_sp()
-    load_schedule_to_table()
+    load_schedule_to_table(False)
         
     if os.name == 'nt':
         root.iconbitmap(bundle_path("icon.ico"))
-        try:
-            from ctypes import windll
-            kernel32 = windll.kernel32
-            kernel32.SetConsoleMode(kernel32.GetStdHandle(-10), 128)
-        except Exception as e:
-            timestamped_print(f'Cannot disable QuickEdit mode: {error(e)}')
             
-    
     def loop():
         try:
             spotify_main()
