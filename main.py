@@ -47,9 +47,12 @@ if not os.path.exists("spotify-scheduler_data"):
     os.makedirs("spotify-scheduler_data")
 
 os.chdir('spotify-scheduler_data')
-if os.name == 'nt':
-    if sys.__stdout__:
-        os.system('title Spotify Scheduler Console')
+try:
+    if os.name == 'nt':
+        if sys.__stdout__:
+            os.system('title Spotify Scheduler Console')
+except Exception:
+    pass
 
 def bundle_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
