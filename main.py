@@ -21,7 +21,6 @@ import logging
 from packaging import version
 import locale
 
-print(f"! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
 VER="1.7.4"
 CONFIG_FILE="config.json"
 SCHEDULE_FILE="schedule.txt"
@@ -136,7 +135,7 @@ def validate_client_credentials(client=None, secret=None):
         timestamped_print(f"Failed validating client credentials: {error(e)}")
         return False
     if response.status_code!=200:
-        timestamped_print(f"Credentials are not valid: {error((response.status_code))} {error((response.text))}")
+        timestamped_print(f"Credentials are not valid: {error((response.status_code))} {error((response.text)).strip()}")
         return False
     return True
 
@@ -159,7 +158,7 @@ def initialize_sp():
     sp=None
     sp_anon=None
     REDIRECT_URI = "http://localhost:23918"
-    SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private"
+    SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative"
     
     if config['CLIENT_ID']!="" and config['CLIENT_SECRET']!="":
         try:
@@ -240,6 +239,38 @@ notebook.add(settings_frame, text=_("Settings"))
 
 info_frame = ttk.Frame(notebook)
 notebook.add(info_frame, text=_("About"))
+
+
+LOG_FILE = open(LOG_FILE, "a", encoding="utf-8")
+
+console_frame = ttk.Frame(notebook)
+notebook.add(console_frame, text=_("Console"))
+
+console_text = tk.Text(console_frame, wrap="word", height=20, width=100, font=("Arial", 10))
+console_text.pack(expand=True, fill="both", padx=10, pady=10)
+
+# Redirecting stdout to console and file
+class Logger:
+    ANSI_ESCAPE = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+
+    def __init__(self, file, terminal, text_widget):
+        self.file = file
+        self.terminal = terminal
+        self.text_widget = text_widget
+
+    def write(self, message):
+        clean_message = self.ANSI_ESCAPE.sub('', message)
+        self.file.write(message)
+        self.terminal.write(message)
+        self.text_widget.insert(tk.END, clean_message)
+        self.text_widget.see(tk.END)
+        self.flush()
+
+    def flush(self):
+        self.file.flush()
+        self.terminal.flush()
+
+sys.stdout = Logger(LOG_FILE, sys.__stdout__, console_text)
 
 def open_link(url):
     try:
@@ -328,27 +359,27 @@ setting_entries = {}
 setting_vars = {}
 
 # Language selection 
-ttk.Label(settings_frame, text=_("Language")).grid(row=0, column=0, padx=10, pady=5, sticky=tk.E)
+ttk.Label(settings_frame, text=_("Language:")).grid(row=0, column=0, padx=10, pady=5, sticky=tk.E)
 language_var = tk.StringVar(value=config.get('LANG', 'en'))
 
 language_combobox = ttk.Combobox(settings_frame, textvariable=language_var, state="readonly", width=47)
 language_combobox['values'] = ('en', 'pl')
-language_combobox.grid(row=0, column=1, padx=10, pady=5)
+language_combobox.grid(row=0, column=1, pady=5)
 
 # CLIENT ID
-ttk.Label(settings_frame, text="Client ID").grid(row=1, column=0, padx=10, pady=5, sticky=tk.E)
+ttk.Label(settings_frame, text="Client ID:").grid(row=1, column=0, padx=10, pady=5, sticky=tk.E)
 setting_entries['CLIENT_ID'] = ttk.Entry(settings_frame, width=50)
-setting_entries['CLIENT_ID'].grid(row=1, column=1, padx=10, pady=5)
+setting_entries['CLIENT_ID'].grid(row=1, column=1, pady=5)
 
 # CLIENT SECRET
-ttk.Label(settings_frame, text="Client secret").grid(row=2, column=0, padx=10, pady=5, sticky=tk.E)
+ttk.Label(settings_frame, text="Client secret:").grid(row=2, column=0, padx=10, pady=5, sticky=tk.E)
 setting_entries['CLIENT_SECRET'] = ttk.Entry(settings_frame, show="*", width=50)
-setting_entries['CLIENT_SECRET'].grid(row=2, column=1, padx=10, pady=5)
+setting_entries['CLIENT_SECRET'].grid(row=2, column=1, pady=5)
 
 # DEVICE NAME
-ttk.Label(settings_frame, text=_("Device name")).grid(row=3, column=0, padx=10, pady=5, sticky=tk.E)
+ttk.Label(settings_frame, text=_("Device name:")).grid(row=3, column=0, padx=10, pady=5, sticky=tk.E)
 setting_entries['DEVICE_NAME'] = ttk.Entry(settings_frame, width=50)
-setting_entries['DEVICE_NAME'].grid(row=3, column=1, padx=10, pady=5)
+setting_entries['DEVICE_NAME'].grid(row=3, column=1, pady=5)
 
 # SWITCHES
 setting_vars['KILLSWITCH_ON'] = tk.BooleanVar(value=config.get('KILLSWITCH_ON', False))
@@ -376,34 +407,13 @@ settingsstatus = ttk.Label(settings_frame, textvariable=settingsstatus_text, wra
 settingsstatus.grid(row=8, columnspan=2, padx=10)
 
 text_label = ttk.Label(settings_frame, text="EN: After changing the language, restart the application to apply the changes. \nPL: Po zmianie języka zrestartuj aplikację, aby zastosować zmiany.", foreground="green")
-text_label.grid(row=9, columnspan=2, padx=10, sticky='w')
+text_label.grid(row=9, columnspan=2, padx=10, sticky='w', pady=5)
 
 devices_list = tk.StringVar()
 devices_list.set("")
 
 devices_label = ttk.Label(settings_frame, textvariable=devices_list, wraplength=500, anchor="w")
 devices_label.grid(row=10, columnspan=2, pady=20, padx=10, sticky='w')
-
-
-
-LOG_FILE = open(LOG_FILE, "a", encoding="utf-8")
-
-# Redirecting stdout to console and file
-class Logger:
-    def __init__(self, file, terminal):
-        self.file = file
-        self.terminal = terminal
-
-    def write(self, message):
-        self.file.write(message)
-        self.terminal.write(message)
-        self.flush() 
-
-    def flush(self):
-        self.file.flush()
-        self.terminal.flush()
-
-sys.stdout = Logger(LOG_FILE, sys.__stdout__)
 
 def load_schedule_to_table():
     try:
@@ -965,11 +975,27 @@ scrollbar.pack(side="right", fill="y")
 
 
 def fetch_user_playlists():
+    def get_all_playlists():
+        playlists = []
+        offset = 0
+        limit = 50
+        
+        while True:
+            try:
+                response = sp.current_user_playlists(limit=limit, offset=offset)
+                playlists.extend(response['items'])
+                print(f"Fetching playlists at offset {offset} len: {len(response['items'])}")
+                if len(response['items']) < limit:
+                    break
+                offset += limit
+            except Exception:
+                break
+        return playlists
     try:
-        playlists = sp.current_user_playlists()
+        playlists = get_all_playlists()
         playlist_table.delete(*playlist_table.get_children())  
-        if playlists and 'items' in playlists:
-            for playlist in playlists['items']:
+        if playlists:
+            for playlist in playlists:
                 if playlist: 
                     playlist_name = playlist['name']
                     playlist_id = playlist['id']
@@ -1033,7 +1059,7 @@ now_playing_image_label.pack(padx=10, pady=10)
 def checklist():
     global global_devices
     if not spstatus:
-        checklistvar.set(_("failed_to_fetch_data_console"))
+        checklistvar.set(_("Spotify credentials are not valid.\nChange CLIENT ID and CLIENT SECRET or fix internet connection."))
         return
     try:
         #limit spotify api calls
@@ -1091,7 +1117,9 @@ playlist_info_str=None
 lastalbum=None
 def update_now_playing_info():
     global lastfetch, playlist_name, lastresponse, playlist_info_str, lasttype, lastalbum
-    
+    if not spstatus:
+        now_playing_label.config(text=(_("Spotify credentials are not valid.\nChange CLIENT ID and CLIENT SECRET or fix internet connection.")))
+        return
     try:
         # LIMIT SPOTIFY API CALLS
         if global_playback:
@@ -1135,9 +1163,8 @@ def update_now_playing_info():
             album = current_track['album']
 
             forcefetch=False
-            if album['name']!=lastalbum and lasttype=="album":
+            if album['name']!=lastalbum and lasttype!="playlist":
                 forcefetch=True
-
             if lastfetch != playing_playlist or forcefetch:
                 if playing_playlist:
                     try:
@@ -1372,39 +1399,71 @@ def spotify_main():
 
 def main():
     global config, newupdate, sp
+    print(f"\n! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
+    print(f"# Spotify Scheduler v{VER} made by Szymon Andrzejewski (https://szymonandrzejewski.pl)")
+    print("# Github repository: https://github.com/sandrzejewskipl/spotify-scheduler/\n")  
     if(not config['CLIENT_ID'] or not config['CLIENT_SECRET']):
-        print(f"Create an app here (instructions are in README on Github):\nhttps://developer.spotify.com/dashboard (it should open automatically)")
-        t.sleep(1.5)
-        open_link("https://developer.spotify.com/dashboard")
-        t.sleep(1.5)
-        config['CLIENT_ID'] = input("Enter CLIENT_ID: ")
-        config['CLIENT_SECRET'] = input("Enter CLIENT_SECRET: ")
-        while not validate_client_credentials():
-            config['CLIENT_ID'] = input("Enter CLIENT_ID: ")
-            config['CLIENT_SECRET'] = input("Enter CLIENT_SECRET: ")
+        print(f"Create an app on Spotify for Developers (instructions are in README on Github):\nhttps://developer.spotify.com/dashboard")
+        def save_credentials():
+            if validate_client_credentials(client_id_entry.get(), client_secret_entry.get()):
+                config['CLIENT_ID'] = client_id_entry.get()
+                config['CLIENT_SECRET'] = client_secret_entry.get()
+                credentials_window.destroy()
+            else:
+                error_label.config(text=_("Couldn't save. Credentials are not valid."))
+
+        credentials_window = tk.Toplevel(root)
+        credentials_window.title(_("Enter Spotify Credentials"))
+        credentials_window.geometry("400x380")
+        credentials_window.resizable(False, False)
+        # Update geometry to get accurate dimensions
+        credentials_window.update_idletasks()
+        root.update_idletasks()
+        
+        # Calculate position to center the window
+        x = root.winfo_x() + (root.winfo_width() - credentials_window.winfo_width()) // 2
+        y = root.winfo_y() + (root.winfo_height() - credentials_window.winfo_height()) // 2
+        
+        # Set the new geometry with updated position
+        credentials_window.geometry(f"+{x}+{y}")
+
+        tk.Label(credentials_window, text=_("set_up_box1")).pack(pady=5)
+        def open_spotify_developers():
+            open_link("https://developer.spotify.com/dashboard")
+
+        open_button = ttk.Button(credentials_window, text=_("Open Spotify for Developers"), command=open_spotify_developers)
+        open_button.pack()
+        tk.Label(credentials_window, text=_("set_up_box2")).pack(pady=10)
+
+        tk.Label(credentials_window, text="Client ID:").pack(pady=(5,0))
+        client_id_entry = ttk.Entry(credentials_window, width=50)
+        client_id_entry.pack(pady=(0,5))
+
+        tk.Label(credentials_window, text="Client Secret:").pack(pady=(5,0))
+        client_secret_entry = ttk.Entry(credentials_window, width=50)
+        client_secret_entry.pack(pady=(0,5))
+
+        save_button = ttk.Button(credentials_window, text=_("Save Settings"), command=save_credentials)
+        save_button.pack(pady=(10,5))
+
+        error_label = tk.Label(credentials_window, text="", fg="red")
+        error_label.pack()
+
+        credentials_window.transient(root)
+        credentials_window.grab_set()
+
+        if os.name == 'nt':
+            root.iconbitmap(bundle_path("icon.ico"))
+            credentials_window.iconbitmap(bundle_path("icon.ico"))
+
+        root.wait_window(credentials_window)
 
         with open(CONFIG_FILE, "w") as f:
             json.dump(config, f, indent=4)
-
-    print(f"# Spotify Scheduler v{VER} made by Szymon Andrzejewski (https://szymonandrzejewski.pl)")
-    print("# Github repository: https://github.com/sandrzejewskipl/spotify-scheduler/")
-    print(_( "check_schedule"))
-    try:
-        with open(SCHEDULE_FILE, 'r') as file:
-            lines = file.readlines()
-            for line in lines:
-                if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
-                    print(f'{line.strip()}')
-    except FileNotFoundError:
-        replace_schedule_with_default()
-        with open(SCHEDULE_FILE, 'r') as file:
-            lines = file.readlines()
-            for line in lines:
-                if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
-                    print(f'{line.strip()}')
-    except Exception as e:
-        timestamped_print(f"Error during reading schedule: {error(e)}")     
-    print('') # newline  
+    if(not config['CLIENT_ID'] or not config['CLIENT_SECRET']):
+        timestamped_print("No credentials provided. Exiting.")
+        sys.exit()
+  
     refresh_settings()
     initialize_sp()
     load_schedule_to_table()
@@ -1418,7 +1477,6 @@ def main():
         except Exception as e:
             timestamped_print(f'Cannot disable QuickEdit mode: {error(e)}')
             
-    
     def loop():
         try:
             spotify_main()
