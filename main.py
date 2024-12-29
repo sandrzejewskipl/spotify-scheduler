@@ -21,7 +21,7 @@ import logging
 from packaging import version
 import locale
 
-VER="1.7.4"
+VER="1.8.0dev1"
 CONFIG_FILE="config.json"
 SCHEDULE_FILE="schedule.txt"
 DEFAULT_SCHEDULE_FILE='default-schedule.txt'
@@ -237,14 +237,13 @@ notebook.add(playlist_frame, text=_("Playlist"))
 settings_frame = ttk.Frame(notebook)
 notebook.add(settings_frame, text=_("Settings"))
 
+console_frame = ttk.Frame(notebook)
+notebook.add(console_frame, text=_("Console"))
+
 info_frame = ttk.Frame(notebook)
 notebook.add(info_frame, text=_("About"))
 
-
 LOG_FILE = open(LOG_FILE, "a", encoding="utf-8")
-
-console_frame = ttk.Frame(notebook)
-notebook.add(console_frame, text=_("Console"))
 
 console_text = tk.Text(console_frame, wrap="word", height=20, width=100, font=("Arial", 10))
 console_text.pack(expand=True, fill="both", padx=10, pady=10)
@@ -301,8 +300,8 @@ info_text.insert("insert", "https://github.com/sandrzejewskipl/Spotify-Scheduler
 info_text.insert("insert", f"\n{_('Made_with')}\n{_('Greetings')}\n\nMIT License - © 2024 Szymon Andrzejewski")
 
 info_text.tag_config("header", font=("Arial", 14, "bold"), justify="center")
-info_text.tag_config("link1", foreground="blue", underline=True)
-info_text.tag_config("link2", foreground="blue", underline=True)
+info_text.tag_config("link1", foreground="#1DB954", underline=True)
+info_text.tag_config("link2", foreground="#1DB954", underline=True)
 
 info_text.tag_bind("link1", "<Button-1>", lambda e: open_link("https://szymonandrzejewski.pl"))
 info_text.tag_bind("link2", "<Button-1>", lambda e: open_link("https://github.com/sandrzejewskipl/Spotify-Scheduler"))
@@ -413,9 +412,9 @@ devices_list = tk.StringVar()
 devices_list.set("")
 
 devices_label = ttk.Label(settings_frame, textvariable=devices_list, wraplength=500, anchor="w")
-devices_label.grid(row=10, columnspan=2, pady=20, padx=10, sticky='w')
+devices_label.grid(row=10, columnspan=2, pady=10, padx=10, sticky='w')
 
-def load_schedule_to_table():
+def load_schedule_to_table(printstatus=True):
     try:
         with open(SCHEDULE_FILE, "r") as file:
             lines = file.readlines()
@@ -425,6 +424,8 @@ def load_schedule_to_table():
                     start_time, end_time = line.strip().split("-")
                     schedule_table.insert("", "end", values=(start_time, end_time))
         timestamped_print("Schedule loaded into table.")
+        if printstatus:
+            schedulevar.set(_("Schedule has been reloaded."))
         refresh_playlist_gui()
     except FileNotFoundError:
         timestamped_print(f"Schedule file does not exist, it will be created now from default.")
@@ -435,6 +436,7 @@ def save_default_schedule():
     try:
         shutil.copy(SCHEDULE_FILE, DEFAULT_SCHEDULE_FILE)
         load_schedule_to_table()
+        schedulevar.set(_("Default schedule has been saved."))
         timestamped_print("Schedule loaded into table.")
     except Exception as e:
         timestamped_print(f"Error during saving schedule: {error(e)}")
@@ -446,6 +448,7 @@ def replace_schedule_with_default():
         load_schedule_to_table()
         generate_schedule_playlists()
         refresh_playlist_gui()
+        schedulevar.set(_("Default schedule has been loaded."))
 
     except Exception as e:
         timestamped_print(f"Error while changing schedule: {error(e)}")
@@ -537,10 +540,12 @@ def add_entry(event=None):
     end_time = (end_time_entry.get()).replace(';',':')
 
     if not is_valid_time_format(start_time):
+        schedulevar.set(_("Error: Incorrect time format."))
         timestamped_print(f"Incorrect time format: {start_time}. Use HH:MM or HH:MM:SS.")
         return
 
     if not is_valid_time_format(end_time):
+        schedulevar.set(_("Error: Incorrect time format."))
         timestamped_print(f"Incorrect time format: {end_time}. Use HH:MM or HH:MM:SS.")
         return
 
@@ -548,6 +553,7 @@ def add_entry(event=None):
     end_dt = datetime.strptime(end_time, "%H:%M:%S" if ":" in end_time and end_time.count(":") == 2 else "%H:%M")
 
     if end_dt <= start_dt:
+        schedulevar.set(_("Error: End time must be later than start time."))
         timestamped_print("Error: End time must be later than start time.")
         return
 
@@ -555,9 +561,11 @@ def add_entry(event=None):
         schedule_table.insert("", "end", values=(start_time, end_time))
         start_time_entry.delete(0, tk.END)
         end_time_entry.delete(0, tk.END)
+        schedulevar.set(f"{_('Added to schedule:')}: {start_time} - {end_time}")
         timestamped_print(f"Added to schedule: {start_time} - {end_time}")
         save_schedule_from_table() 
     else:
+        schedulevar.set(_("Error: Cannot add an empty entry."))
         timestamped_print("Cannot add an empty entry.")
 
 
@@ -569,18 +577,21 @@ def delete_selected_entry():
             start_time, end_time = schedule_table.item(item, "values")
             remove_playlist(f"{start_time}-{end_time}")
             schedule_table.delete(item)
+        schedulevar.set(f"{_('Removed from schedule:')}: {start_time} - {end_time}")
         timestamped_print("The selected entry has been deleted.")
         save_schedule_from_table()
     else:
+        schedulevar.set(_("No entry selected."))
         timestamped_print("No entries have been marked for deletion.")
 
 def regenerate():
     generate_default()
     replace_schedule_with_default()
+    schedulevar.set(_("Default schedule has been restored."))
 
 # Schedule table
 columns = ("start", "end")
-schedule_table = ttk.Treeview(schedule_frame, columns=columns, show="headings", height=10)
+schedule_table = ttk.Treeview(schedule_frame, columns=columns, show="headings")
 schedule_table.heading("start", text=_("Start Time"))
 schedule_table.heading("end", text=_("End Time"))
 schedule_table.pack(fill="both", expand=True, padx=10, pady=(10, 0))
@@ -607,11 +618,16 @@ add_button.pack(side="left", padx=5)
 delete_button = ttk.Button(entry_frame, text=_("Delete Selected"), command=delete_selected_entry)
 delete_button.pack(side="left", padx=5)
 
+schedulevar = tk.StringVar()
+schedulevar.set("")
+
+# Checklist label
+schedule_label = ttk.Label(schedule_frame, textvariable=schedulevar, font=("Arial", 10))
+schedule_label.pack(fill="x", padx=15)
+
 # Buttons
 button_frame = ttk.Frame(schedule_frame)
 button_frame.pack(fill="x", padx=10, pady=10)
-
-
 
 replace_button = ttk.Button(button_frame, text=_("Load default"), command=replace_schedule_with_default)
 replace_button.pack(side="left", padx=5)
@@ -973,26 +989,29 @@ scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=playlist_table
 playlist_table.configure(yscrollcommand=scrollbar.set)
 scrollbar.pack(side="right", fill="y")
 
-
+username=""
 def fetch_user_playlists():
-    def get_all_playlists():
-        playlists = []
-        offset = 0
-        limit = 50
-        
-        while True:
-            try:
-                response = sp.current_user_playlists(limit=limit, offset=offset)
-                playlists.extend(response['items'])
-                print(f"Fetching playlists at offset {offset} len: {len(response['items'])}")
-                if len(response['items']) < limit:
-                    break
-                offset += limit
-            except Exception:
+    global username
+    playlists = []
+    offset = 0
+    limit = 50
+    
+    while True:
+        try:
+            response = sp.current_user_playlists(limit=limit, offset=offset)
+            total=response['total']
+            playlists.extend(response['items'])
+            if len(response['items']) < limit:
                 break
-        return playlists
+            offset += limit
+        except Exception:
+            break
     try:
-        playlists = get_all_playlists()
+        user = sp.current_user()
+        username=(f"{_('Logged in as')}: {user['display_name']}\n\n")
+    except Exception as e:
+        pass
+    try:
         playlist_table.delete(*playlist_table.get_children())  
         if playlists:
             for playlist in playlists:
@@ -1000,6 +1019,7 @@ def fetch_user_playlists():
                     playlist_name = playlist['name']
                     playlist_id = playlist['id']
                     playlist_table.insert("", "end", values=(playlist_name, playlist_id))
+            playlistsvar.set(f"{_('fetched_playlists', length=len(playlists), total=total)}")
     except Exception as e:
         timestamped_print(f"Error downloading user playlists: {error(e)}")
 
@@ -1021,9 +1041,14 @@ playlist_table.bind("<ButtonRelease-1>", select_playlist)
 
 # load playlist button
 load_playlists_btn = ttk.Button(playlist_frame, text=_("Refresh Playlists"), command=fetch_user_playlists)
-load_playlists_btn.pack(side='left', pady=10, padx=10)
+load_playlists_btn.pack(side='left', pady=10, padx=(10,5))
 
+playlistsvar = tk.StringVar()
+playlistsvar.set("")
 
+# Checklist label
+playlists_label = ttk.Label(playlist_frame, textvariable=playlistsvar, font=("Arial", 10))
+playlists_label.pack(side='left', pady=10)
 
 def display_playlist_info(id):
     playlist_info = get_playlist_info(id)
@@ -1141,7 +1166,7 @@ def update_now_playing_info():
                 device_list+=(f"• {name} ")
                 if device.get("is_active"):
                     target_device_name = name
-        devices_string=f"{_('Detected devices')}:\n{device_list}"
+        devices_string=f"{username}{_('Detected devices')}:\n{device_list}"
         devices_list.set(devices_string)
 
         if current_playback and "item" in current_playback and current_playback["item"]:
@@ -1395,6 +1420,8 @@ def spotify_main():
                 global_devices = sp.devices()
             except Exception:
                 pass
+    else:
+        status.set(_("Automation is paused"))
     update_now_playing_info()
 
 def main():
@@ -1414,7 +1441,7 @@ def main():
 
         credentials_window = tk.Toplevel(root)
         credentials_window.title(_("Enter Spotify Credentials"))
-        credentials_window.geometry("400x380")
+        credentials_window.geometry("450x430")
         credentials_window.resizable(False, False)
         # Update geometry to get accurate dimensions
         credentials_window.update_idletasks()
@@ -1466,7 +1493,7 @@ def main():
   
     refresh_settings()
     initialize_sp()
-    load_schedule_to_table()
+    load_schedule_to_table(False)
         
     if os.name == 'nt':
         root.iconbitmap(bundle_path("icon.ico"))

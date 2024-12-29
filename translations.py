@@ -33,6 +33,7 @@ translations = {
         "Running": "Działa",
         "Resume Automation": "Wznów automatyzację",
         "Pause Automation": "Wstrzymaj automatyzację",
+        "Automation is paused": "Automatyzacja jest wstrzymana",
         "Pause music and stop automation": "Zapauzuj muzykę i wstrzymaj automatyzację",
         "Run Spotify": "Uruchom Spotify",
         "Restore default": "Przywróć domyślne",
@@ -91,6 +92,18 @@ translations = {
         "Open Spotify for Developers": "Otwórz Spotify for Developers",
         "Console": "Konsola",
         "Spotify credentials are not valid.\nChange CLIENT ID and CLIENT SECRET or fix internet connection.": "Dane uwierzytelniające Spotify są nieprawidłowe.\nZmień CLIENT ID i CLIENT SECRET lub napraw połączenie internetowe.",
+        "fetched_playlists": "Pobrano {length} z {total} playlist(y).",
+        "Error: Incorrect time format.": "Nieprawidłowy format czasu.",
+        "Logged in as": "Zalogowano jako",
+        "Error: End time must be later than start time.": "Błąd: Godzina zakończenia musi być późniejsza niż godzina rozpoczęcia.",
+        "Added to schedule:": "Dodano do harmonogramu",
+        "Removed from schedule:": "Usunięto z harmonogramu",
+        "Error: Cannot add an empty entry.": "Błąd: Nie można dodać pustego wpisu.",
+        "No entry selected.": "Nie zaznaczono żadnych wpisu.",
+        "Default schedule has been restored.": "Domyślny harmonogram został przywrócony.",
+        "Default schedule has been saved.": "Domyślny harmonogram został zapisany.",
+        "Default schedule has been loaded.": "Domyślny harmonogram został wczytany.",
+        "Schedule has been reloaded.": "Harmonogram został przeładowany.",
 
 
 
@@ -128,6 +141,7 @@ translations = {
         "out_of_schedule": "Out of schedule. Playback has not been stopped.",
         "out_of_schedule_paused": "Out of schedule. Playback is stopped.",
         "set_up_box1": "Create a new app on Spotify for Developers\nfollowing the instructions below:\nhttps://developer.spotify.com/dashboard",
-        "set_up_box2": "- Fill out App name and App description as you wish.\n- Add http://localhost:23918 to Redirect URis.\n- Select Web API checkbox and click on Save button.\n\nNext go to your created application,\nclick on Settings and fill in the required details below."
+        "set_up_box2": "- Fill out App name and App description as you wish.\n- Add http://localhost:23918 to Redirect URis.\n- Select Web API checkbox and click on Save button.\n\nNext go to your created application,\nclick on Settings and fill in the required details below.",
+        "fetched_playlists": "Fetched {length} out of {total} playlist(s)."
     }
 }
