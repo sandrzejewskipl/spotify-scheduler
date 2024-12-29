@@ -21,7 +21,7 @@ import logging
 from packaging import version
 import locale
 
-VER="1.8.0dev1"
+VER="1.8.0"
 CONFIG_FILE="config.json"
 SCHEDULE_FILE="schedule.txt"
 DEFAULT_SCHEDULE_FILE='default-schedule.txt'
