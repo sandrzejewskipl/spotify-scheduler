@@ -19,6 +19,7 @@ import os
 from spotipy_anon import SpotifyAnon
 import logging
 from packaging import version
+import locale
 
 print(f"! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
 VER="1.7.4"
@@ -60,9 +61,19 @@ def bundle_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
+def get_default_language():
+    try:
+        locale.setlocale(locale.LC_TIME, '')
+        system_language = locale.getlocale()[0]
+        if system_language.startswith('Polish'):
+            return 'pl'
+    except Exception:
+        pass
+    return 'en'
+    
 def load_config():
     default_config = {
-        "LANG": "en",
+        "LANG": get_default_language(),
         "CLIENT_ID": "",
         "CLIENT_SECRET": "",
         "DEVICE_NAME": platform.node() if hasattr(platform, "node") else "",
