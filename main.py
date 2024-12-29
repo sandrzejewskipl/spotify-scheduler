@@ -48,17 +48,19 @@ if not os.path.exists("spotify-scheduler_data"):
 
 os.chdir('spotify-scheduler_data')
 if os.name == 'nt':
-    os.system('title Spotify Scheduler Console')
+    if sys.__stdout__:
+        os.system('title Spotify Scheduler Console')
 
 def bundle_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath("..")
+    # try:
+    #     # PyInstaller creates a temp folder and stores path in _MEIPASS
+    #     base_path = sys._MEIPASS
+    # except Exception:
+    #     base_path = os.path.abspath("..")
 
-    return os.path.join(base_path, relative_path)
+    # return os.path.join(base_path, relative_path)
+    return os.path.join(os.path.dirname(__file__), relative_path)
 
 def get_default_language():
     try:
@@ -261,16 +263,19 @@ class Logger:
     def write(self, message):
         clean_message = self.ANSI_ESCAPE.sub('', message)
         self.file.write(message)
-        self.terminal.write(message)
+        if self.terminal:
+            self.terminal.write(message)
         self.text_widget.insert(tk.END, clean_message)
         self.text_widget.see(tk.END)
         self.flush()
 
     def flush(self):
         self.file.flush()
-        self.terminal.flush()
+        if self.terminal:
+            self.terminal.flush()
 
 sys.stdout = Logger(LOG_FILE, sys.__stdout__, console_text)
+sys.stderr = Logger(LOG_FILE, sys.__stderr__, console_text)
 
 def open_link(url):
     try:
@@ -674,14 +679,14 @@ control_frame.pack(side="top", fill="x", padx=10, pady=5)
 def run_spotify():
     if os.name == 'nt':
         try:
-            result = subprocess.run(["where", "spotify"], capture_output=True, text=True, check=True)
-            subprocess.run(["spotify"])
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            userdir = os.path.join(os.environ['USERPROFILE'], 'AppData\\Roaming\\Spotify\\Spotify.exe')
-            if os.path.exists(userdir):
-                subprocess.Popen([userdir], shell=True)
+            if shutil.which('spotify'):
+                subprocess.run(["spotify"])
             else:
-                timestamped_print("Spotify not found.")
+                userdir = os.path.join(os.environ['USERPROFILE'], 'AppData\\Roaming\\Spotify\\Spotify.exe')
+                if os.path.exists(userdir):
+                    subprocess.Popen([userdir], shell=True)
+                else:
+                    timestamped_print("Spotify not found.")
         except Exception as e:
             timestamped_print(f"Error during launching Spotify: {error(e)}")
     if os.name == 'posix':
@@ -696,12 +701,12 @@ def run_spotify():
 def spotify_button_check():
     if os.name == 'nt':
         try:
-            result = subprocess.run(["where", "spotify"], capture_output=True, text=True, check=True)
-            return True
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            userdir = os.path.join(os.environ['USERPROFILE'], 'AppData\\Roaming\\Spotify\\Spotify.exe')
-            if os.path.exists(userdir):
+            if shutil.which('spotify'):
                 return True
+            else:
+                userdir = os.path.join(os.environ['USERPROFILE'], 'AppData\\Roaming\\Spotify\\Spotify.exe')
+                if os.path.exists(userdir):
+                    return True
         except Exception:
             pass
     if os.name == 'posix':
@@ -1496,12 +1501,6 @@ def main():
         
     if os.name == 'nt':
         root.iconbitmap(bundle_path("icon.ico"))
-        try:
-            from ctypes import windll
-            kernel32 = windll.kernel32
-            kernel32.SetConsoleMode(kernel32.GetStdHandle(-10), 128)
-        except Exception as e:
-            timestamped_print(f'Cannot disable QuickEdit mode: {error(e)}')
             
     def loop():
         try:
