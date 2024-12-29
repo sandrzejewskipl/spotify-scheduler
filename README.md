@@ -27,7 +27,7 @@ In the Playlist tab, you can assign playlists to specific time slots. If no play
 
 Download an `.exe` file from the latest release <a href="https://github.com/sandrzejewskipl/spotify-scheduler/releases">here</a> and launch it.
 
-On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify. Then OAuth popup should open. You <b>need</b> to keep the console running; otherwise, closing it will cause the program to stop.
+On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify. Then OAuth popup should open.
 
 ## Running on Linux
 <b>Clone the repository (by the command below, or download it)</b>
@@ -72,6 +72,14 @@ Run this command from the command line in the same directory.
 `python3 main.py`
 
 On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify. Then OAuth popup should open.
+
+If you're running script manually on Windows and you're using cmd.exe (not Windows Terminal) remember to disable Quickedit to prevent program from freezing:
+- Right-click the title bar of the Command Prompt window.
+- Select “Properties” from the context menu.
+- In the Properties window, click on the “Options” tab.
+- Under the "Edit Options" section, uncheck the box that says "QuickEdit Mode."
+Click "OK" to save your changes.
+
 
 # Remember to turn on shuffle in your Spotify client to play different track each time.
 
