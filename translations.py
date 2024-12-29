@@ -104,6 +104,7 @@ translations = {
         "Default schedule has been saved.": "Domyślny harmonogram został zapisany.",
         "Default schedule has been loaded.": "Domyślny harmonogram został wczytany.",
         "Schedule has been reloaded.": "Harmonogram został przeładowany.",
+        "Playlist ID can't be blank.": "ID Playlisty nie może być puste.",
 
 
 

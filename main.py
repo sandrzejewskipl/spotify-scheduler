@@ -845,11 +845,12 @@ def change_playlist():
         
         schedule_playlists[current_time] = PLAYLIST_ID
         save_schedule_playlists()
-
+        playliststatus_text.set(_(""))
         timestamped_print(f"Playlist for {current_time} updated to {PLAYLIST_ID}.")
         refresh_playlist_gui(current_time)
         spotify_main()
     else:
+        playliststatus_text.set(_("Playlist ID can't be blank."))
         timestamped_print(f"Playlist ID can't be blank.")
 
 def remove_playlist(user_input=None):
@@ -940,18 +941,24 @@ playlist_image_label.grid(row=0, column=0, rowspan=3, sticky="nw")
 
 # name
 playlist_label = ttk.Label(playlist_info_frame, text=_("Playlist")+":")
-playlist_label.grid(row=0, column=1, padx=5, pady=2, sticky="nw")
+playlist_label.grid(row=0, column=1, padx=5, sticky="nw")
 
 # id/url
 playlist_entry_label = ttk.Label(playlist_info_frame, text=_("Playlist ID or link:"))
-playlist_entry_label.grid(row=1, column=1, padx=5, pady=2, sticky="w")
+playlist_entry_label.grid(row=1, column=1, padx=5, sticky="w")
 
 playlist_entry = ttk.Entry(playlist_info_frame, width=75)
-playlist_entry.grid(row=1, column=1, padx=125, pady=2)
+playlist_entry.grid(row=1, column=1, padx=125)
+
+playliststatus_text = tk.StringVar()
+playliststatus_text.set("")
+
+settingsstatus = ttk.Label(playlist_info_frame, textvariable=playliststatus_text, wraplength=500, anchor="w")
+settingsstatus.grid(row=3, column=1, columnspan=2)
 
 # Container for buttons
 buttons_frame = ttk.Frame(playlist_info_frame)
-buttons_frame.grid(row=2, column=1, columnspan=2, pady=10)
+buttons_frame.grid(row=2, column=1, columnspan=2)
 
 # Set Playlist button
 change_playlist_btn = ttk.Button(buttons_frame, text=_("Set Playlist"), command=change_playlist)
