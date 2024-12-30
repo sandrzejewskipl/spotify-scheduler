@@ -102,6 +102,12 @@ Click "OK" to save your changes.
 For optimal stability and reliable playback automation, it's recommended to enable both the Killswitch and Auto-launch Spotify features.
 ### After changing CLIENT_ID or CLIENT_SECRET or wanting to change Spotify account (do it by logging in to another account in the browser), click `Delete cache (logout)` button.
 
-Settings, schedule and other data are stored in `spotify-scheduler_data` folder that will be automatically created. This folder needs to remain in the same directory as your downloaded app.
+App data files (config, schedules, playlists, logs and spotify token) are stored inside user's data directory:
+
+Windows: `%localappdata%\spotify-scheduler`
+
+Linux: `~/.local/share/spotify-scheduler`
+
+MacOS: `~/Library/Application Support/spotify-scheduler`
 
 <h1 align="center"><a href="https://github.com/sandrzejewskipl/spotify-scheduler/releases/latest">Download latest release</a></h1>

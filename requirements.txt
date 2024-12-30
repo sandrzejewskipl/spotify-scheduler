@@ -4,3 +4,4 @@ psutil
 pillow
 spotipy_anon
 packaging
+platformdirs

@@ -20,13 +20,15 @@ from spotipy_anon import SpotifyAnon
 import logging
 from packaging import version
 import locale
+from platformdirs import PlatformDirs
 
-VER="1.8.1"
+VER="1.8.2"
 CONFIG_FILE="config.json"
 SCHEDULE_FILE="schedule.txt"
 DEFAULT_SCHEDULE_FILE='default-schedule.txt'
 LOG_FILE="output.log"
 SCHEDULE_PLAYLISTS_FILE = "schedule_playlists.json"
+DATA_DIRECTORY = PlatformDirs(appname="spotify-scheduler", appauthor=False, ensure_exists=True).user_data_dir
 
 try:
     current_pid = os.getpid()
@@ -42,17 +44,14 @@ def error(e):
     string=f'\n\033[91m{e}\033[0m'
     return string
 
-# Check if the folder exists, if not, create it
-if not os.path.exists("spotify-scheduler_data"):
-    os.makedirs("spotify-scheduler_data")
-
-os.chdir('spotify-scheduler_data')
 try:
     if os.name == 'nt':
         if sys.__stdout__:
             os.system('title Spotify Scheduler Console')
 except Exception:
     pass
+
+os.chdir(DATA_DIRECTORY)
 
 def bundle_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -1447,7 +1446,8 @@ def main():
     global config, newupdate, sp
     print(f"\n! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
     print(f"# Spotify Scheduler v{VER} made by Szymon Andrzejewski (https://szymonandrzejewski.pl)")
-    print("# Github repository: https://github.com/sandrzejewskipl/spotify-scheduler/\n")  
+    print("# Github repository: https://github.com/sandrzejewskipl/spotify-scheduler/") 
+    print(f"# Data is stored in {DATA_DIRECTORY}\n") 
     if(not config['CLIENT_ID'] or not config['CLIENT_SECRET']):
         print(f"Create an app on Spotify for Developers (instructions are in README on Github):\nhttps://developer.spotify.com/dashboard")
         def save_credentials():
