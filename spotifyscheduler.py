@@ -1089,10 +1089,14 @@ def fetch_user_playlists():
             break
     try:
         user = sp.current_user()
+        display_name=""
         email=""
+        if "display_name" in user:
+            display_name=user['display_name']
         if "email" in user:
             email=f"({user['email']})"
-        username=(f"{_('Logged in as')}: {user['display_name']} {email}\n\n")
+        if display_name or email:
+            username=(f"{_('Logged in as')}: {display_name} {email}")
     except Exception as e:
         pass
     try:
@@ -1255,7 +1259,7 @@ def update_now_playing_info():
                 device_list+=(f"• {name} ")
                 if device.get("is_active"):
                     target_device_name = name
-        devices_string=f"{username}{_('Detected devices')}:\n{device_list}"
+        devices_string=f"{username}\n\n{_('Detected devices')}:\n{device_list}"
         devices_list.set(devices_string)
 
         if current_playback and "item" in current_playback and current_playback["item"]:
