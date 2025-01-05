@@ -34,7 +34,7 @@ source .venv/bin/activate
 if [ -f "requirements.txt" ]; then
   echo "Running pip commands. This may take a while..."
   pip install -q --upgrade pip
-  pip install -q -r requirements.txt
+  pip install -q -r requirements.txt --upgrade
 fi
 
 if [ -f "main.py" ]; then
