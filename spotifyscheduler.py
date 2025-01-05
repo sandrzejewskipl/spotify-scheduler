@@ -22,7 +22,7 @@ from packaging import version
 import locale
 from platformdirs import PlatformDirs
 
-VER="1.9.0"
+VER="1.9.1.dev1"
 CONFIG_FILE="config.json"
 SCHEDULE_FILE="schedule.txt"
 DEFAULT_SCHEDULE_FILE='default-schedule.txt'
@@ -161,7 +161,7 @@ def initialize_sp():
     sp=None
     sp_anon=None
     REDIRECT_URI = "http://localhost:23918"
-    SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-playback-position user-top-read user-read-recently-played"
+    SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-playback-position user-top-read user-read-recently-played user-read-email"
     
     if config['CLIENT_ID']!="" and config['CLIENT_SECRET']!="":
         try:
@@ -1089,7 +1089,10 @@ def fetch_user_playlists():
             break
     try:
         user = sp.current_user()
-        username=(f"{_('Logged in as')}: {user['display_name']}\n\n")
+        email=""
+        if "email" in user:
+            email=f"({user['email']})"
+        username=(f"{_('Logged in as')}: {user['display_name']} {email}\n\n")
     except Exception as e:
         pass
     try:
