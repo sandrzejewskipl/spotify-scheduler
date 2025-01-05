@@ -271,16 +271,12 @@ def fetch_last_played_songs():
         for item in results['items']:
             played_at = item['played_at']
             utc_time = datetime.strptime(played_at, "%Y-%m-%dT%H:%M:%S.%fZ")
-            
-            # Pobranie aktualnego czasu UTC z informacją o strefie czasowej
-            utc_now = datetime.now(timezone.utc)  # Czas UTC z informacją o strefie czasowej
-            
-            # Pobranie lokalnego czasu
+                       
             local_now = datetime.now()
             local_tz = local_now.astimezone().tzinfo
 
-            utc_time = utc_time.replace(tzinfo=timezone.utc)  # Nadanie UTC informacja o strefie czasowej
-            local_time = utc_time.astimezone(local_tz)  # Konwersja UTC na lokalny czas
+            utc_time = utc_time.replace(tzinfo=timezone.utc)
+            local_time = utc_time.astimezone(local_tz)
             
             track_name = item['track']['name']
             artist_name = item['track']['artists'][0]['name']
@@ -299,15 +295,14 @@ button_frame.grid(row=1, column=0, sticky="sw", padx=10, pady=10)
 last_played_frame.grid_rowconfigure(0, weight=1)
 last_played_frame.grid_columnconfigure(0, weight=1)
 
-# Przycisk pobierania i etykieta w jednej linii
 fetch_last_played_btn = ttk.Button(button_frame, text=_("Refresh recently played"), command=fetch_last_played_songs)
-fetch_last_played_btn.grid(row=0, column=0, sticky="w")  # Przycisk w lewej części ramki
+fetch_last_played_btn.grid(row=0, column=0, sticky="w")
 
 lastplayedvar = tk.StringVar()
 lastplayedvar.set("sdf")
 
 lastplayed_label = ttk.Label(button_frame, textvariable=lastplayedvar, font=("Arial", 10))
-lastplayed_label.grid(row=0, column=1, padx=5, sticky="w")  # Etykieta obok przycisku
+lastplayed_label.grid(row=0, column=1, padx=5, sticky="w")
 
 
 settings_frame = ttk.Frame(notebook)
@@ -1578,7 +1573,7 @@ def main():
     fetching_loop()
     updatechecker_loop()
     title_loop()
-    
+
 def set_up():
     global config
     if(not config['CLIENT_ID'] or not config['CLIENT_SECRET']):
