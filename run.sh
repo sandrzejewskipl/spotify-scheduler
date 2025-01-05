@@ -37,8 +37,8 @@ if [ -f "requirements.txt" ]; then
   pip install -q -r requirements.txt --upgrade
 fi
 
-if [ -f "main.py" ]; then
-  python main.py
+if [ -f "spotifyscheduler.py" ]; then
+  python spotifyscheduler.py
 fi
 
 deactivate

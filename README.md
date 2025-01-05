@@ -69,7 +69,7 @@ Make sure you have <b>Python3-tk</b> installed.
 
 Run this command from the command line in the same directory.
 
-`python3 main.py`
+`python3 spotifyscheduler.py`
 
 On the first run, you will be asked for CLIENT_ID and CLIENT_SECRET from Spotify. Then OAuth popup should open.
 
