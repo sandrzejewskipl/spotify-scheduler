@@ -675,22 +675,22 @@ entry_frame = ttk.Frame(schedule_frame)
 entry_frame.pack(fill="x", padx=10, pady=5)
 
 start_time_label = ttk.Label(entry_frame, text=_("START_LABEL"))
-start_time_label.pack(side="left", padx=5)
+start_time_label.pack(side="left")
 start_time_entry = ttk.Entry(entry_frame, width=10)
 start_time_entry.pack(side="left", padx=5)
 start_time_entry.bind('<Return>', add_entry)
 
 end_time_label = ttk.Label(entry_frame, text=_("END_LABEL"))
-end_time_label.pack(side="left", padx=5)
+end_time_label.pack(side="left", padx=(10,0))
 end_time_entry = ttk.Entry(entry_frame, width=10)
 end_time_entry.pack(side="left", padx=5)
 end_time_entry.bind('<Return>', add_entry)
 
 add_button = ttk.Button(entry_frame, text=_("Add Entry"), command=add_entry)
-add_button.pack(side="left", padx=5)
+add_button.pack(side="right")
 
 delete_button = ttk.Button(entry_frame, text=_("Delete Selected"), command=delete_selected_entry)
-delete_button.pack(side="left", padx=5)
+delete_button.pack(side="right", padx=5)
 
 schedulevar = tk.StringVar()
 schedulevar.set("")
