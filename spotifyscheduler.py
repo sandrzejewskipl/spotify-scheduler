@@ -166,7 +166,7 @@ def initialize_sp():
     if config['CLIENT_ID']!="" and config['CLIENT_SECRET']!="":
         try:
             if validate_client_credentials():
-                sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=config['CLIENT_ID'],client_secret=config['CLIENT_SECRET'],redirect_uri=REDIRECT_URI,scope=SCOPE))
+                sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=config['CLIENT_ID'],client_secret=config['CLIENT_SECRET'],redirect_uri=REDIRECT_URI,scope=SCOPE), retries=0)
                 spstatus=True
                 fetch_user_playlists()
                 timestamped_print("Spotipy initialized properly.")
@@ -174,7 +174,7 @@ def initialize_sp():
             else:
                 sp = fake_sp()
                 spstatus=False
-            sp_anon = spotipy.Spotify(auth_manager=SpotifyAnon())
+            sp_anon = spotipy.Spotify(auth_manager=SpotifyAnon(), retries=0)
         except Exception as e:
             timestamped_print(f"Error during spotipy initalization: {error(e)}")
 
