@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['main.py'],
+    ['spotifyscheduler.py'],
     pathex=[],
     binaries=[],
     datas=[('icon.ico', '.')],

@@ -1,6 +1,6 @@
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import time as t
 import psutil
 import sys
@@ -22,7 +22,7 @@ from packaging import version
 import locale
 from platformdirs import PlatformDirs
 
-VER="1.8.2"
+VER="1.8.3"
 CONFIG_FILE="config.json"
 SCHEDULE_FILE="schedule.txt"
 DEFAULT_SCHEDULE_FILE='default-schedule.txt'
@@ -161,7 +161,7 @@ def initialize_sp():
     sp=None
     sp_anon=None
     REDIRECT_URI = "http://localhost:23918"
-    SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative"
+    SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-playback-position user-top-read user-read-recently-played"
     
     if config['CLIENT_ID']!="" and config['CLIENT_SECRET']!="":
         try:
@@ -237,6 +237,78 @@ notebook.add(schedule_frame, text=_("Schedule"))
 
 playlist_frame = ttk.Frame(notebook)
 notebook.add(playlist_frame, text=_("Playlist"))
+
+last_played_frame = ttk.Frame(notebook)
+notebook.add(last_played_frame, text=_("Recently Played"))
+
+
+frame_with_padding = ttk.Frame(last_played_frame)
+frame_with_padding.grid(row=0, column=0, padx=10, pady=5, sticky="nsew")
+
+
+columns = ("played_at", "track_name", "artist_name")
+last_played_table = ttk.Treeview(frame_with_padding, columns=columns, show="headings")
+last_played_table.heading("played_at", text=_("Time"))
+last_played_table.heading("track_name", text=_("Title"))
+last_played_table.heading("artist_name", text=_("Artist"))
+
+
+scrollbar = ttk.Scrollbar(frame_with_padding, orient="vertical", command=last_played_table.yview)
+last_played_table.configure(yscrollcommand=scrollbar.set)
+
+
+last_played_table.grid(row=0, column=0, sticky="nsew")
+scrollbar.grid(row=0, column=1, sticky="ns")
+
+
+frame_with_padding.grid_rowconfigure(0, weight=1)
+frame_with_padding.grid_columnconfigure(0, weight=1)
+
+def fetch_last_played_songs():
+    try:
+        results = sp.current_user_recently_played(limit=50)
+        last_played_table.delete(*last_played_table.get_children())
+        for item in results['items']:
+            played_at = item['played_at']
+            utc_time = datetime.strptime(played_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+            
+            # Pobranie aktualnego czasu UTC z informacją o strefie czasowej
+            utc_now = datetime.now(timezone.utc)  # Czas UTC z informacją o strefie czasowej
+            
+            # Pobranie lokalnego czasu
+            local_now = datetime.now()
+            local_tz = local_now.astimezone().tzinfo
+
+            utc_time = utc_time.replace(tzinfo=timezone.utc)  # Nadanie UTC informacja o strefie czasowej
+            local_time = utc_time.astimezone(local_tz)  # Konwersja UTC na lokalny czas
+            
+            track_name = item['track']['name']
+            artist_name = item['track']['artists'][0]['name']
+            last_played_table.insert("", "end", values=(local_time.strftime("%Y-%m-%d %H:%M:%S"), track_name, artist_name))
+        lastplayedvar.set(_("Last refreshed at", date=datetime.now().strftime("%H:%M:%S")))
+
+    except Exception as e:
+        lastplayedvar.set(_("Error fetching recently played songs.", date=datetime.now().strftime("%H:%M:%S")))
+        timestamped_print(f"Error fetching recently played songs: {error(e)}")
+
+
+button_frame = ttk.Frame(last_played_frame)
+button_frame.grid(row=1, column=0, sticky="sw", padx=10, pady=10)
+
+
+last_played_frame.grid_rowconfigure(0, weight=1)
+last_played_frame.grid_columnconfigure(0, weight=1)
+
+# Przycisk pobierania i etykieta w jednej linii
+fetch_last_played_btn = ttk.Button(button_frame, text=_("Refresh recently played"), command=fetch_last_played_songs)
+fetch_last_played_btn.grid(row=0, column=0, sticky="w")  # Przycisk w lewej części ramki
+
+lastplayedvar = tk.StringVar()
+lastplayedvar.set("sdf")
+
+lastplayed_label = ttk.Label(button_frame, textvariable=lastplayedvar, font=("Arial", 10))
+lastplayed_label.grid(row=0, column=1, padx=5, sticky="w")  # Etykieta obok przycisku
+
 
 settings_frame = ttk.Frame(notebook)
 notebook.add(settings_frame, text=_("Settings"))
@@ -634,7 +706,7 @@ schedule_label.pack(fill="x", padx=15)
 
 # Buttons
 button_frame = ttk.Frame(schedule_frame)
-button_frame.pack(fill="x", padx=10, pady=10)
+button_frame.pack(fill="x", padx=5, pady=10)
 
 replace_button = ttk.Button(button_frame, text=_("Load default"), command=replace_schedule_with_default)
 replace_button.pack(side="left", padx=5)
@@ -1033,8 +1105,9 @@ def fetch_user_playlists():
                     playlist_name = playlist['name']
                     playlist_id = playlist['id']
                     playlist_table.insert("", "end", values=(playlist_name, playlist_id))
-            playlistsvar.set(f"{_('fetched_playlists', length=len(playlists), total=total)}")
+            playlistsvar.set(f"{_('fetched_playlists', length=len(playlists), total=total, date=datetime.now().strftime('%H:%M:%S'))}")
     except Exception as e:
+        playlistsvar.set(f"{_('Error fetching playlists.', date=datetime.now().strftime('%H:%M:%S'))}")
         timestamped_print(f"Error downloading user playlists: {error(e)}")
 
 # Select playlist from list
@@ -1448,68 +1521,8 @@ def main():
     print(f"# Spotify Scheduler v{VER} made by Szymon Andrzejewski (https://szymonandrzejewski.pl)")
     print("# Github repository: https://github.com/sandrzejewskipl/spotify-scheduler/") 
     print(f"# Data is stored in {DATA_DIRECTORY}\n") 
-    if(not config['CLIENT_ID'] or not config['CLIENT_SECRET']):
-        print(f"Create an app on Spotify for Developers (instructions are in README on Github):\nhttps://developer.spotify.com/dashboard")
-        def save_credentials():
-            if validate_client_credentials(client_id_entry.get(), client_secret_entry.get()):
-                config['CLIENT_ID'] = client_id_entry.get()
-                config['CLIENT_SECRET'] = client_secret_entry.get()
-                credentials_window.destroy()
-            else:
-                error_label.config(text=_("Couldn't save. Credentials are not valid."))
 
-        credentials_window = tk.Toplevel(root)
-        credentials_window.title(_("Enter Spotify Credentials"))
-        credentials_window.geometry("450x430")
-        credentials_window.resizable(False, False)
-        # Update geometry to get accurate dimensions
-        credentials_window.update_idletasks()
-        root.update_idletasks()
-        
-        # Calculate position to center the window
-        x = root.winfo_x() + (root.winfo_width() - credentials_window.winfo_width()) // 2
-        y = root.winfo_y() + (root.winfo_height() - credentials_window.winfo_height()) // 2
-        
-        # Set the new geometry with updated position
-        credentials_window.geometry(f"+{x}+{y}")
-
-        tk.Label(credentials_window, text=_("set_up_box1")).pack(pady=5)
-        def open_spotify_developers():
-            open_link("https://developer.spotify.com/dashboard")
-
-        open_button = ttk.Button(credentials_window, text=_("Open Spotify for Developers"), command=open_spotify_developers)
-        open_button.pack()
-        tk.Label(credentials_window, text=_("set_up_box2")).pack(pady=10)
-
-        tk.Label(credentials_window, text="Client ID:").pack(pady=(5,0))
-        client_id_entry = ttk.Entry(credentials_window, width=50)
-        client_id_entry.pack(pady=(0,5))
-
-        tk.Label(credentials_window, text="Client Secret:").pack(pady=(5,0))
-        client_secret_entry = ttk.Entry(credentials_window, width=50)
-        client_secret_entry.pack(pady=(0,5))
-
-        save_button = ttk.Button(credentials_window, text=_("Save Settings"), command=save_credentials)
-        save_button.pack(pady=(10,5))
-
-        error_label = tk.Label(credentials_window, text="", fg="red")
-        error_label.pack()
-
-        credentials_window.transient(root)
-        credentials_window.grab_set()
-
-        if os.name == 'nt':
-            root.iconbitmap(bundle_path("icon.ico"))
-            credentials_window.iconbitmap(bundle_path("icon.ico"))
-
-        root.wait_window(credentials_window)
-
-        with open(CONFIG_FILE, "w") as f:
-            json.dump(config, f, indent=4)
-    if(not config['CLIENT_ID'] or not config['CLIENT_SECRET']):
-        timestamped_print("No credentials provided. Exiting.")
-        sys.exit()
-  
+    set_up()
     refresh_settings()
     initialize_sp()
     load_schedule_to_table(False)
@@ -1527,6 +1540,7 @@ def main():
 
     def fetching_loop():
         fetch_user_playlists()
+        fetch_last_played_songs()
         root.after(60000, fetching_loop)
     
     def title_loop(lastdate=None):
@@ -1564,7 +1578,82 @@ def main():
     fetching_loop()
     updatechecker_loop()
     title_loop()
+    
+def set_up():
+    global config
+    if(not config['CLIENT_ID'] or not config['CLIENT_SECRET']):
+        print(f"Create an app on Spotify for Developers (instructions are in README on Github):\nhttps://developer.spotify.com/dashboard")
+        def save_credentials():
+            if validate_client_credentials(client_id_entry.get(), client_secret_entry.get()):
+                config['CLIENT_ID'] = client_id_entry.get()
+                config['CLIENT_SECRET'] = client_secret_entry.get()
+                credentials_window.destroy()
+            else:
+                error_label.config(text=_("Couldn't save. Credentials are not valid."))
 
+        credentials_window = tk.Toplevel(root)
+        credentials_window.title(_("Enter Spotify Credentials"))
+        credentials_window.geometry("450x430")
+        credentials_window.resizable(False, False)
+        # Update geometry to get accurate dimensions
+        credentials_window.update_idletasks()
+        root.update_idletasks()
+        
+        # Calculate position to center the window
+        x = root.winfo_x() + (root.winfo_width() - credentials_window.winfo_width()) // 2
+        y = root.winfo_y() + (root.winfo_height() - credentials_window.winfo_height()) // 2
+        
+        # Set the new geometry with updated position
+        credentials_window.geometry(f"+{x}+{y}")
+
+        set_up_box_1=tk.Text(credentials_window, wrap="word", height=3, width=60, font=("Arial", 10))
+        set_up_box_1.pack(pady=10)
+        set_up_box_1.insert(tk.END, _("set_up_box1"))
+        set_up_box_1.config(state="disabled")
+        set_up_box_1.tag_configure("center", justify='center')
+        set_up_box_1.tag_add("center", 1.0, "end")
+        def open_spotify_developers():
+            open_link("https://developer.spotify.com/dashboard")
+
+        open_button = ttk.Button(credentials_window, text=_("Open Spotify for Developers"), command=open_spotify_developers)
+        open_button.pack()
+
+        set_up_box_2=tk.Text(credentials_window, wrap="word", height=6, width=60, font=("Arial", 10))
+        set_up_box_2.pack(pady=10)
+        set_up_box_2.insert(tk.END, _("set_up_box2"))
+        set_up_box_2.config(state="disabled")
+        set_up_box_2.tag_configure("center", justify='center')
+        set_up_box_2.tag_add("center", 1.0, "end")
+        
+
+        tk.Label(credentials_window, text="Client ID:").pack(pady=(5,0))
+        client_id_entry = ttk.Entry(credentials_window, width=50)
+        client_id_entry.pack(pady=(0,5))
+
+        tk.Label(credentials_window, text="Client Secret:").pack(pady=(5,0))
+        client_secret_entry = ttk.Entry(credentials_window, width=50)
+        client_secret_entry.pack(pady=(0,5))
+
+        save_button = ttk.Button(credentials_window, text=_("Save Settings"), command=save_credentials)
+        save_button.pack(pady=(10,5))
+
+        error_label = tk.Label(credentials_window, text="", fg="red")
+        error_label.pack()
+
+        credentials_window.transient(root)
+        credentials_window.grab_set()
+
+        if os.name == 'nt':
+            root.iconbitmap(bundle_path("icon.ico"))
+            credentials_window.iconbitmap(bundle_path("icon.ico"))
+
+        root.wait_window(credentials_window)
+
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(config, f, indent=4)
+    if(not config['CLIENT_ID'] or not config['CLIENT_SECRET']):
+        timestamped_print("No credentials provided. Exiting.")
+        sys.exit()
 
 if __name__ == "__main__":
     root.after(0, main)

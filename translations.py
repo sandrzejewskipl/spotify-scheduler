@@ -46,6 +46,7 @@ translations = {
         "Set Playlist": "Ustaw Playlistę",
         "Name": "Nazwa",
         "Refresh Playlists": "Odśwież Playlisty",
+        "Refresh recently played": "Odśwież ostatnio odtwarzane",
         "Owner": "Autor",
         "Image not found": "Nie znaleziono obrazka",
         "Device Not Found": "❌ Urządzenie: NIE ZNALEZIONO",
@@ -92,7 +93,7 @@ translations = {
         "Open Spotify for Developers": "Otwórz Spotify for Developers",
         "Console": "Konsola",
         "Spotify credentials are not valid.\nChange CLIENT ID and CLIENT SECRET or fix internet connection.": "Dane uwierzytelniające Spotify są nieprawidłowe.\nZmień CLIENT ID i CLIENT SECRET lub napraw połączenie internetowe.",
-        "fetched_playlists": "Pobrano {length} z {total} playlist(y).",
+        "fetched_playlists": "Pobrano {length} z {total} playlist(y) o {date}",
         "Error: Incorrect time format.": "Nieprawidłowy format czasu.",
         "Logged in as": "Zalogowano jako",
         "Error: End time must be later than start time.": "Błąd: Godzina zakończenia musi być późniejsza niż godzina rozpoczęcia.",
@@ -105,7 +106,11 @@ translations = {
         "Default schedule has been loaded.": "Domyślny harmonogram został wczytany.",
         "Schedule has been reloaded.": "Harmonogram został przeładowany.",
         "Playlist ID can't be blank.": "ID Playlisty nie może być puste.",
-
+        "Recently Played": "Ostatnio odtwarzane",
+        "Time": "Czas",
+        "Error fetching recently played songs.": "Błąd pobierania ostatnio odtwarzanych piosenek o {date}",
+        "Last refreshed at": "Ostatnio odświeżono o {date}",
+        "Error fetching playlists.": "Błąd pobierania playlist o {date}",
 
 
     },
@@ -143,6 +148,9 @@ translations = {
         "out_of_schedule_paused": "Out of schedule. Playback is stopped.",
         "set_up_box1": "Create a new app on Spotify for Developers\nfollowing the instructions below:\nhttps://developer.spotify.com/dashboard",
         "set_up_box2": "- Fill out App name and App description as you wish.\n- Add http://localhost:23918 to Redirect URis.\n- Select Web API checkbox and click on Save button.\n\nNext go to your created application,\nclick on Settings and fill in the required details below.",
-        "fetched_playlists": "Fetched {length} out of {total} playlist(s)."
+        "fetched_playlists": "Fetched {length} out of {total} playlist(s) at {date}",
+        "Error fetching playlists.": "Error fetching playlists at {date}",
+        "Error fetching recently played songs.": "Error fetching recently played songs at {date}",
+        "Last refreshed at": "Last refreshed at {date}",
     }
 }
