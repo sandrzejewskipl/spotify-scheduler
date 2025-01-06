@@ -22,7 +22,7 @@ from packaging import version
 import locale
 from platformdirs import PlatformDirs
 
-VER="1.9.1.dev1"
+VER="1.9.1"
 CONFIG_FILE="config.json"
 SCHEDULE_FILE="schedule.txt"
 DEFAULT_SCHEDULE_FILE='default-schedule.txt'
