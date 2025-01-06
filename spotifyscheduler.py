@@ -686,18 +686,20 @@ end_time_entry = ttk.Entry(entry_frame, width=10)
 end_time_entry.pack(side="left", padx=5)
 end_time_entry.bind('<Return>', add_entry)
 
-add_button = ttk.Button(entry_frame, text=_("Add Entry"), command=add_entry)
-add_button.pack(side="right")
-
 delete_button = ttk.Button(entry_frame, text=_("Delete Selected"), command=delete_selected_entry)
-delete_button.pack(side="right", padx=5)
+delete_button.pack(side="right")
+
+add_button = ttk.Button(entry_frame, text=_("Add Entry"), command=add_entry)
+add_button.pack(side="right", padx=5)
+
+
 
 schedulevar = tk.StringVar()
 schedulevar.set("")
 
 # Checklist label
 schedule_label = ttk.Label(schedule_frame, textvariable=schedulevar, font=("Arial", 10))
-schedule_label.pack(fill="x", padx=15)
+schedule_label.pack(fill="x", padx=10)
 
 # Buttons
 button_frame = ttk.Frame(schedule_frame)
@@ -1384,14 +1386,18 @@ def killswitch(reason=None):
             timestamped_print(f"Killed {processes} Spotify process(es). Reason: {reason}")
 
 last_endtime=None
+last_delay=None
+closest_start_time=None
 def is_within_schedule():
     match=False
-    global last_schedule, last_endtime
+    global last_schedule, last_endtime, closest_start_time, last_delay
     last_schedule=''
     try:
         with open(SCHEDULE_FILE, "r+") as file:
             lines = file.readlines()
             now = datetime.now().time()
+            closest_start_time = None
+            last_endtime=None
             for line in lines:
                 if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
                     start_str, end_str = line.strip().split("-")
@@ -1399,8 +1405,15 @@ def is_within_schedule():
                     end_time = datetime.strptime(end_str, "%H:%M:%S" if ":" in end_str and end_str.count(":") == 2 else "%H:%M").time()
                     if start_time <= now <= end_time and (not config['WEEKDAYS_ONLY'] or datetime.today().weekday() < 5):
                         last_schedule=line
-                        last_endtime=datetime.combine(datetime.now(), end_time)
                         match=line.strip()
+                        if last_endtime is None or last_endtime<datetime.combine(datetime.now(), end_time):
+                            last_endtime=datetime.combine(datetime.now(), end_time)
+                    if start_time > now and (closest_start_time is None or start_time < closest_start_time):
+                        closest_start_time = start_time
+            if last_endtime:
+                last_delay=last_endtime
+            if match:
+                closest_start_time=None
     except FileNotFoundError:
         timestamped_print(f"Schedule file does not exist, it will be created now from default.")
         replace_schedule_with_default()
@@ -1436,7 +1449,7 @@ def play_music():
 
 last_spotify_run=False
 def pause_music(retries=3, delay=2):
-    global last_endtime, global_playback, last_spotify_run
+    global last_delay, global_playback, last_spotify_run
     last_spotify_run = False
 
     if not spstatus:
@@ -1454,8 +1467,9 @@ def pause_music(retries=3, delay=2):
                 if current_playback["is_playing"]:
                     sp.pause_playback()
                     delay=""
-                    if last_endtime:
-                        delay=f"(Delay: {round(((datetime.now()-last_endtime).total_seconds()),2)}s)"
+                    if last_delay:
+                        delay=f"(Delay: {round(((datetime.now()-last_delay).total_seconds()),2)}s)"
+                        last_delay=None
                     timestamped_print(f"Playback has been paused. {delay}")
             status.set(_("out_of_schedule_paused"))
             return
@@ -1547,11 +1561,25 @@ def main():
     
     def title_loop(lastdate=None):
         try:
-            global newupdate
+            global newupdate, closest_start_time, last_endtime
             now = datetime.now().strftime("%H:%M:%S")
             if lastdate!=now: #update title only when time changes
                 lastdate=now
-                root.title(f"Spotify Scheduler v{VER} | {now} {newupdate}")
+                nextplay=""
+                if not config['WEEKDAYS_ONLY'] or (config['WEEKDAYS_ONLY'] and datetime.today().weekday() < 5):
+                    if closest_start_time:
+                        if closest_start_time > datetime.now().time():
+                            closest_time_str = datetime.combine(datetime.today(), closest_start_time) - datetime.now()
+                            closest_time_str = str(closest_time_str).split('.')[0]
+                            nextplay=f" | {_('Plays in ')}{closest_time_str}"
+                    elif last_endtime:
+                        if last_endtime > datetime.now():
+                            closest_time_str = last_endtime - datetime.now()
+                            closest_time_str = str(closest_time_str).split('.')[0]
+                            nextplay=f" | {_('Stops in ')}{closest_time_str}"
+                else:
+                    nextplay=f" | Weekend!"
+                root.title(f"Spotify Scheduler v{VER} | {now}{nextplay} {newupdate}")
         except Exception:
             pass
 

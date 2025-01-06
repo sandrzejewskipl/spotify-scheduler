@@ -111,6 +111,8 @@ translations = {
         "Error fetching recently played songs.": "Błąd pobierania ostatnio odtwarzanych piosenek o {date}",
         "Last refreshed at": "Ostatnio odświeżono o {date}",
         "Error fetching playlists.": "Błąd pobierania playlist o {date}",
+        "Plays in ": "Zagra za ",
+        "Stops in ": "Stop za ",
 
 
     },
