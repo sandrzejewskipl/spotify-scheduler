@@ -1566,19 +1566,22 @@ def main():
             if lastdate!=now: #update title only when time changes
                 lastdate=now
                 nextplay=""
-                if not config['WEEKDAYS_ONLY'] or (config['WEEKDAYS_ONLY'] and datetime.today().weekday() < 5):
-                    if closest_start_time:
-                        if closest_start_time > datetime.now().time():
-                            closest_time_str = datetime.combine(datetime.today(), closest_start_time) - datetime.now()
-                            closest_time_str = str(closest_time_str).split('.')[0]
-                            nextplay=f" | {_('Plays in ')}{closest_time_str}"
-                    elif last_endtime:
-                        if last_endtime > datetime.now():
-                            closest_time_str = last_endtime - datetime.now()
-                            closest_time_str = str(closest_time_str).split('.')[0]
-                            nextplay=f" | {_('Stops in ')}{closest_time_str}"
-                else:
-                    nextplay=f" | Weekend!"
+                try:
+                    if not config['WEEKDAYS_ONLY'] or (config['WEEKDAYS_ONLY'] and datetime.today().weekday() < 5):
+                        if closest_start_time:
+                            if closest_start_time > datetime.now().time():
+                                closest_time_str = datetime.combine(datetime.today(), closest_start_time) - datetime.now()
+                                closest_time_str = str(closest_time_str).split('.')[0]
+                                nextplay=f" | {_('Plays in ')}{closest_time_str}"
+                        elif last_endtime:
+                            if last_endtime > datetime.now():
+                                closest_time_str = last_endtime - datetime.now()
+                                closest_time_str = str(closest_time_str).split('.')[0]
+                                nextplay=f" | {_('Stops in ')}{closest_time_str}"
+                    else:
+                        nextplay=f" | Weekend!"
+                except Exception:
+                    pass
                 root.title(f"Spotify Scheduler v{VER} | {now}{nextplay} {newupdate}")
         except Exception:
             pass
