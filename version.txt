@@ -30,8 +30,8 @@ StringFileInfo(
   StringTable(
     u'040904B0',
     [StringStruct(u'CompanyName', u'Spotify Scheduler'),
-    StringStruct(u'FileDescription', u'Spotify Scheduler app'),
-    StringStruct(u'FileVersion', u'1.0.0.0'),
+    StringStruct(u'FileDescription', u'Spotify Scheduler'),
+    StringStruct(u'FileVersion', u'1.1.0.0'),
     StringStruct(u'InternalName', u'Spotify Scheduler'),
     StringStruct(u'LegalCopyright', u'MIT License - (c) 2024 Szymon Andrzejewski'),
     StringStruct(u'OriginalFilename', u'spotify-scheduler.exe'),
