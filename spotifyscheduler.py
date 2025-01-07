@@ -1323,13 +1323,16 @@ def update_now_playing_info():
                     if response.status_code == 200:
                         img_data = BytesIO(response.content)
                         img = Image.open(img_data)
-                        img = img.resize((200, 200))
-                        now_playing_img = ImageTk.PhotoImage(img)
                         lastresponse=track["album"]
+                    else:
+                        img = Image.new("RGB", (200, 200), "lightgrey")
+                else:
+                    img = Image.new("RGB", (200, 200), "lightgrey")
 
-                        now_playing_image_label.config(image=now_playing_img)
-                        now_playing_image_label.image = now_playing_img 
-
+                img = img.resize((200, 200))
+                now_playing_img = ImageTk.PhotoImage(img)
+                now_playing_image_label.config(image=now_playing_img)
+                now_playing_image_label.image = now_playing_img 
         else:
             now_playing_label.config(text=_("no_playback"))
             now_playing_image_label.image=None
