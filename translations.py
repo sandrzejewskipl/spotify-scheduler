@@ -113,6 +113,7 @@ translations = {
         "Error fetching playlists.": "Błąd pobierania playlist o {date}",
         "Plays in ": "Zagra za ",
         "Stops in ": "Stop za ",
+        "Are you sure you want to exit?": "Czy na pewno chcesz wyjść?",
 
 
     },

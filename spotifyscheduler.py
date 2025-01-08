@@ -21,6 +21,7 @@ import logging
 from packaging import version
 import locale
 from platformdirs import PlatformDirs
+from tkinter.messagebox import askyesno
 
 VER="1.9.1"
 CONFIG_FILE="config.json"
@@ -1619,6 +1620,13 @@ def main():
     updatechecker_loop()
     title_loop()
 
+    def close_confirm():
+        ans = askyesno("Spotify Scheduler", _("Are you sure you want to exit?"))
+        if ans:
+            root.destroy()
+
+    root.wm_protocol ("WM_DELETE_WINDOW", close_confirm)
+    
 def set_up():
     global config
     if(not config['CLIENT_ID'] or not config['CLIENT_SECRET']):
