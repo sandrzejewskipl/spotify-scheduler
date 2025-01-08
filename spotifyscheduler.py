@@ -1557,10 +1557,13 @@ def main():
             pause_music()
         root.after(2500, loop)  # Loop
 
-    def fetching_loop():
+    def fetch_playlists_loop():
         fetch_user_playlists()
+        root.after(90000, fetch_playlists_loop)
+
+    def fetch_played_loop():
         fetch_last_played_songs()
-        root.after(60000, fetching_loop)
+        root.after(300000, fetch_played_loop)
     
     def title_loop(lastdate=None):
         try:
@@ -1611,7 +1614,8 @@ def main():
         root.after(600000, updatechecker_loop)
 
     loop()
-    fetching_loop()
+    fetch_playlists_loop()
+    fetch_played_loop()
     updatechecker_loop()
     title_loop()
 
