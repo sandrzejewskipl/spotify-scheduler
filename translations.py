@@ -114,7 +114,7 @@ translations = {
         "Plays in ": "Zagra za ",
         "Stops in ": "Stop za ",
         "Are you sure you want to exit?": "Czy na pewno chcesz wyjść?",
-
+        "Schedule is empty.": "Harmonogram jest pusty.",
 
     },
     

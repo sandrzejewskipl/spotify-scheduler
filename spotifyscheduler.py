@@ -1392,9 +1392,10 @@ def killswitch(reason=None):
 last_endtime=None
 last_delay=None
 closest_start_time=None
+empty_schedule=None
 def is_within_schedule():
     match=False
-    global last_schedule, last_endtime, closest_start_time, last_delay
+    global last_schedule, last_endtime, closest_start_time, last_delay, empty_schedule
     last_schedule=''
     try:
         with open(SCHEDULE_FILE, "r+") as file:
@@ -1402,8 +1403,10 @@ def is_within_schedule():
             now = datetime.now().time()
             closest_start_time = None
             last_endtime=None
+            empty_schedule=True
             for line in lines:
                 if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
+                    empty_schedule=False
                     start_str, end_str = line.strip().split("-")
                     start_time = datetime.strptime(start_str, "%H:%M:%S" if ":" in start_str and start_str.count(":") == 2 else "%H:%M").time()
                     end_time = datetime.strptime(end_str, "%H:%M:%S" if ":" in end_str and end_str.count(":") == 2 else "%H:%M").time()
@@ -1568,14 +1571,16 @@ def main():
     
     def title_loop(lastdate=None):
         try:
-            global newupdate, closest_start_time, last_endtime
+            global newupdate, closest_start_time, last_endtime, empty_schedule
             now = datetime.now().strftime("%H:%M:%S")
             if lastdate!=now: #update title only when time changes
                 lastdate=now
                 nextplay=""
                 try:
                     if not config['WEEKDAYS_ONLY'] or (config['WEEKDAYS_ONLY'] and datetime.today().weekday() < 5):
-                        if closest_start_time:
+                        if empty_schedule:
+                            nextplay=f" | {_('Schedule is empty')}"
+                        elif closest_start_time:
                             if closest_start_time > datetime.now().time():
                                 closest_time_str = datetime.combine(datetime.today(), closest_start_time) - datetime.now()
                                 closest_time_str = str(closest_time_str).split('.')[0]
