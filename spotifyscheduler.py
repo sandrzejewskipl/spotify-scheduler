@@ -1392,16 +1392,18 @@ def killswitch(reason=None):
 last_endtime=None
 last_delay=None
 closest_start_time=None
+earliest_start_time=None
 empty_schedule=None
 def is_within_schedule():
     match=False
-    global last_schedule, last_endtime, closest_start_time, last_delay, empty_schedule
+    global last_schedule, last_endtime, closest_start_time, last_delay, empty_schedule, earliest_start_time
     last_schedule=''
     try:
         with open(SCHEDULE_FILE, "r+") as file:
             lines = file.readlines()
             now = datetime.now().time()
             closest_start_time = None
+            earliest_start_time=None
             last_endtime=None
             empty_schedule=True
             for line in lines:
@@ -1417,10 +1419,14 @@ def is_within_schedule():
                             last_endtime=datetime.combine(datetime.now(), end_time)
                     if start_time > now and (closest_start_time is None or start_time < closest_start_time):
                         closest_start_time = start_time
+                    if earliest_start_time is None or start_time < earliest_start_time:
+                        earliest_start_time = start_time
             if last_endtime:
                 last_delay=last_endtime
             if match:
                 closest_start_time=None
+            if not closest_start_time:
+                closest_start_time=earliest_start_time
     except FileNotFoundError:
         timestamped_print(f"Schedule file does not exist, it will be created now from default.")
         replace_schedule_with_default()
@@ -1596,16 +1602,23 @@ def main():
                     if not config['WEEKDAYS_ONLY'] or (config['WEEKDAYS_ONLY'] and datetime.today().weekday() < 5):
                         if empty_schedule:
                             nextplay=f" | {_('Schedule is empty')}"
-                        elif closest_start_time:
-                            if closest_start_time > datetime.now().time():
-                                closest_time_str = datetime.combine(datetime.today(), closest_start_time) - datetime.now()
-                                closest_time_str = str(closest_time_str).split('.')[0]
-                                nextplay=f" | {_('Plays in ')}{closest_time_str}"
                         elif last_endtime:
                             if last_endtime > datetime.now():
                                 closest_time_str = last_endtime - datetime.now()
                                 closest_time_str = str(closest_time_str).split('.')[0]
                                 nextplay=f" | {_('Stops in ')}{closest_time_str}"
+                        elif closest_start_time:
+                            if closest_start_time > datetime.now().time():
+                                closest_time_str = datetime.combine(datetime.today(), closest_start_time) - datetime.now()
+                                closest_time_str = str(closest_time_str).split('.')[0]
+                                nextplay=f" | {_('Plays in ')}{closest_time_str}"
+                            else:
+                                if not config['WEEKDAYS_ONLY'] or (config['WEEKDAYS_ONLY'] and (datetime.today() + timedelta(days=1)).weekday() < 5):
+                                    closest_time_str = datetime.combine(datetime.today() + timedelta(days=1), closest_start_time) - datetime.now()
+                                    closest_time_str = str(closest_time_str).split('.')[0]
+                                    nextplay=f" | {_('Plays in ')}{closest_time_str}"
+                                else:
+                                    nextplay=f" | {_('Weekend!')}"
                     else:
                         nextplay=f" | Weekend!"
                 except Exception:
