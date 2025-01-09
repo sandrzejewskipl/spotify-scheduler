@@ -111,4 +111,4 @@ Linux: `~/.local/share/spotify-scheduler`
 
 MacOS: `~/Library/Application Support/spotify-scheduler`
 
-<h1 align="center"><a href="https://github.com/sandrzejewskipl/spotify-scheduler/releases/latest">Download latest release</a></h1>
+<h1 align="center"><a href="https://github.com/sandrzejewskipl/spotify-scheduler/releases/latest">Download latest release</a> | <a href="https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/CHANGELOG.md">Changelog</a></h1>
