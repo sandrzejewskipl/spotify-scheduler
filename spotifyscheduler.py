@@ -23,7 +23,7 @@ import locale
 from platformdirs import PlatformDirs
 from tkinter.messagebox import askyesno
 
-VER="1.9.1"
+VER="1.9.2.dev1"
 CONFIG_FILE="config.json"
 SCHEDULE_FILE="schedule.txt"
 DEFAULT_SCHEDULE_FILE='default-schedule.txt'
