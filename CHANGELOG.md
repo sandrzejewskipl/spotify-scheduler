@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## 1.10.0
 ### Added:
 - overnight schedules (e.g. 23:00-1:00)
 - placeholder img on now playing tab
