@@ -1177,7 +1177,7 @@ def checklist():
     global global_devices
     try:
         #limit spotify api calls
-        if global_devices:
+        if global_devices or global_devices==False:
             devices = global_devices
         else:
             devices = sp.devices()
@@ -1243,12 +1243,12 @@ def update_now_playing_info():
         return
     try:
         # LIMIT SPOTIFY API CALLS
-        if global_playback:
+        if global_playback or global_playback==False:
             current_playback = global_playback
         else:
             current_playback = sp.current_playback()
 
-        if global_devices:
+        if global_devices or global_devices==False:
             devices = global_devices
         else:
             devices = sp.devices()
@@ -1467,8 +1467,13 @@ def pause_music(retries=3, delay=2):
     while attempt < retries:
         try:
             took_time=datetime.now()
+            global_playback=None
+
             current_playback = sp.current_playback()
             global_playback = current_playback
+
+            if not global_playback:
+                global_playback=False #reduce api calls when None
 
             if current_playback and "is_playing" in current_playback:
                 if current_playback["is_playing"]:
@@ -1500,11 +1505,18 @@ def spotify_main():
             initialize_sp()
         if is_within_schedule():
             try:
+                global_playback=None
+                global_devices=None
+
                 current_playback = sp.current_playback()
                 global_playback = current_playback
+                if not global_playback: #reduce api calls
+                    global_playback=False
 
                 devices = sp.devices()
                 global_devices = devices
+                if not global_devices: #reduce api calls
+                    global_devices=False
 
                 target_device = None
                 active_device = None
@@ -1530,8 +1542,12 @@ def spotify_main():
         else:
             status.set(_("out_of_schedule"))
             pause_music()
+            global_devices=None
             try:
                 global_devices = sp.devices()
+
+                if not global_devices: #reduce api calls
+                    global_devices=False
             except Exception:
                 pass
     else:
