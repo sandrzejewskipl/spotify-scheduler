@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.10.1
+### Fixed:
+- translation ("Schedule is empty")
+
 ## 1.10.0
 ### Added:
 - overnight schedules (e.g. 23:00-1:00)
