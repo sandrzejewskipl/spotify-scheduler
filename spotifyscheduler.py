@@ -5,7 +5,7 @@ import time as t
 import psutil
 import sys
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, font
 import re
 from PIL import Image, ImageTk
 from io import BytesIO
@@ -494,10 +494,21 @@ def load_schedule_to_table(printstatus=True):
         with open(SCHEDULE_FILE, "r") as file:
             lines = file.readlines()
             schedule_table.delete(*schedule_table.get_children())
+            try:
+                default_font = font.nametofont("TkDefaultFont").copy()
+                default_font.configure(weight="bold")
+                schedule_table.tag_configure("blue", foreground="blue", font=default_font)
+            except Exception:
+                pass
             for line in lines:
                 if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
                     start_time, end_time = line.strip().split("-")
-                    schedule_table.insert("", "end", values=(start_time, end_time))
+                    start_time_formatted = datetime.strptime(start_time, "%H:%M:%S" if ":" in start_time and start_time.count(":") == 2 else "%H:%M").time()
+                    end_time_formatted = datetime.strptime(end_time, "%H:%M:%S" if ":" in end_time and end_time.count(":") == 2 else "%H:%M").time()
+                    if start_time_formatted > end_time_formatted:
+                        schedule_table.insert("", "end", values=(start_time, end_time), tags=("blue",))
+                    else:
+                        schedule_table.insert("", "end", values=(start_time, end_time))
         timestamped_print("Schedule loaded into table.")
         if printstatus:
             schedulevar.set(_("Schedule has been reloaded."))
@@ -627,10 +638,15 @@ def add_entry(event=None):
     start_dt = datetime.strptime(start_time, "%H:%M:%S" if ":" in start_time and start_time.count(":") == 2 else "%H:%M")
     end_dt = datetime.strptime(end_time, "%H:%M:%S" if ":" in end_time and end_time.count(":") == 2 else "%H:%M")
 
-    if end_dt <= start_dt:
-        schedulevar.set(_("Error: End time must be later than start time."))
-        timestamped_print("Error: End time must be later than start time.")
+    if start_dt==end_dt:
+        schedulevar.set(_("Error: Start and end time cannot be the same."))
+        timestamped_print("Start and end time cannot be the same.")
         return
+    
+    # if end_dt <= start_dt:
+    #     schedulevar.set(_("Error: End time must be later than start time."))
+    #     timestamped_print("Error: End time must be later than start time.")
+    #     return
 
     if start_time and end_time:
         schedule_table.insert("", "end", values=(start_time, end_time))
@@ -1412,11 +1428,22 @@ def is_within_schedule():
                     start_str, end_str = line.strip().split("-")
                     start_time = datetime.strptime(start_str, "%H:%M:%S" if ":" in start_str and start_str.count(":") == 2 else "%H:%M").time()
                     end_time = datetime.strptime(end_str, "%H:%M:%S" if ":" in end_str and end_str.count(":") == 2 else "%H:%M").time()
-                    if start_time <= now <= end_time and (not config['WEEKDAYS_ONLY'] or datetime.today().weekday() < 5):
-                        last_schedule=line
-                        match=line.strip()
-                        if last_endtime is None or last_endtime<datetime.combine(datetime.now(), end_time):
-                            last_endtime=datetime.combine(datetime.now(), end_time)
+                    if start_time <= end_time:
+                        if start_time <= now <= end_time and (not config['WEEKDAYS_ONLY'] or datetime.today().weekday() < 5):
+                            last_schedule=line
+                            match=line.strip()
+                            if last_endtime is None or last_endtime<datetime.combine(datetime.now(), end_time):
+                                last_endtime=datetime.combine(datetime.now(), end_time)
+                    else:  # Handle overnight schedules
+                        if (start_time <= now or now <= end_time) and (not config['WEEKDAYS_ONLY'] or datetime.today().weekday() < 5):
+                            last_schedule=line
+                            match = line.strip()
+                            if last_endtime is None or last_endtime < datetime.combine(datetime.now(), end_time):
+                                if start_time < now:
+                                    last_endtime = datetime.combine(datetime.now(), end_time) + timedelta(days=1)
+                                else:
+                                    last_endtime = datetime.combine(datetime.now(), end_time)
+
                     if start_time > now and (closest_start_time is None or start_time < closest_start_time):
                         closest_start_time = start_time
                     if earliest_start_time is None or start_time < earliest_start_time:
@@ -1436,11 +1463,12 @@ def is_within_schedule():
 
 last_playlist=''
 def play_music():
-    global last_playlist, global_devices, last_spotify_run
+    global last_playlist, global_devices, last_spotify_run, closest_start_time
     try:
         if target_device:
             PLAYLIST_ID=get_playlist_for_schedule()
             if PLAYLIST_ID:
+                closest_start_time=None
                 sp.start_playback(device_id=target_device["id"], context_uri=f"spotify:playlist:{PLAYLIST_ID}")
                 last_playlist=PLAYLIST_ID
                 playlist_info=get_playlist_info(PLAYLIST_ID)
@@ -1608,10 +1636,12 @@ def main():
                                 closest_time_str = str(closest_time_str).split('.')[0]
                                 nextplay=f" | {_('Stops in ')}{closest_time_str}"
                         elif closest_start_time:
-                            if closest_start_time > datetime.now().time():
+                            if closest_start_time >= datetime.now().time():
                                 closest_time_str = datetime.combine(datetime.today(), closest_start_time) - datetime.now()
                                 closest_time_str = str(closest_time_str).split('.')[0]
                                 nextplay=f" | {_('Plays in ')}{closest_time_str}"
+                            elif closest_start_time >= (datetime.now() - timedelta(seconds=2.5)).time():
+                                nextplay=f" | {_('Playing soon')}"
                             else:
                                 if not config['WEEKDAYS_ONLY'] or (config['WEEKDAYS_ONLY'] and (datetime.today() + timedelta(days=1)).weekday() < 5):
                                     closest_time_str = datetime.combine(datetime.today() + timedelta(days=1), closest_start_time) - datetime.now()

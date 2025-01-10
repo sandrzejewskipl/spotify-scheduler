@@ -115,6 +115,8 @@ translations = {
         "Stops in ": "Stop za ",
         "Are you sure you want to exit?": "Czy na pewno chcesz wyjść?",
         "Schedule is empty.": "Harmonogram jest pusty.",
+        "Playing soon": "Odtwarzanie wkrótce",
+        "Error: Start and end time cannot be the same.": "Błąd: Godzina rozpoczęcia i zakończenia nie mogą być takie same.",
 
     },
     
