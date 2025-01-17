@@ -24,7 +24,7 @@ from platformdirs import PlatformDirs
 from tkinter.messagebox import askyesno
 import random
 
-VER="1.11.0"
+VER="1.11.1.dev1"
 CONFIG_FILE="config.json"
 SCHEDULE_FILE="schedule.txt"
 DEFAULT_SCHEDULE_FILE='default-schedule.txt'
@@ -606,7 +606,7 @@ def generate_schedule_playlists():
                 json.dump(new_data, json_file, indent=4)
     except Exception as e:
         timestamped_print(f"Error during saving playlists file: {error(e)}")
-def get_playlist_for_schedule(key=None):
+def get_value_for_schedule(key=None,value="playlist"): #value should be playlist or randomqueue
     global last_schedule, SCHEDULE_PLAYLISTS_FILE
     if key==None:
         key=is_within_schedule()
@@ -615,33 +615,11 @@ def get_playlist_for_schedule(key=None):
             with open(SCHEDULE_PLAYLISTS_FILE, "r") as file:
                 data = json.load(file)
                 key = key.strip()
-                if key in data and "playlist" in data[key]:
-                    return data[key]["playlist"]
+                if key in data and value in data[key]:
+                    return data[key][value]
 
-                elif "default" in data and "playlist" in data["default"]:
-                    return data["default"]["playlist"]
-                else:
-                    return None
-        except FileNotFoundError:
-            generate_schedule_playlists()
-        except Exception as e:
-            timestamped_print(f"Error during loading playlists file: {error(e)}")
-    return False
-
-def get_randomqueue_for_schedule(key=None):
-    global last_schedule, SCHEDULE_PLAYLISTS_FILE
-    if key==None:
-        key=is_within_schedule()
-    if key:
-        try:
-            with open(SCHEDULE_PLAYLISTS_FILE, "r") as file:
-                data = json.load(file)
-                key = key.strip()
-                if key in data and "randomqueue" in data[key]:
-                    return data[key]["randomqueue"]
-
-                elif "default" in data and "randomqueue" in data["default"]:
-                    return data["default"]["randomqueue"]
+                elif "default" in data and value in data["default"]:
+                    return data["default"][value]
                 else:
                     return None
         except FileNotFoundError:
@@ -960,7 +938,7 @@ def update_view_for_time(*args):
     current_time = selected_time.get()
 
     hour = current_time.split("(")[0].rstrip(" ")
-    PLAYLIST_ID = get_playlist_for_schedule(key=hour)
+    PLAYLIST_ID = get_value_for_schedule(key=hour,value="playlist")
     
     randomqueue_var.set(checkifrandomqueue(hour))
     if (schedule_playlists.get(hour) and "playlist" in schedule_playlists.get(hour)):
@@ -1290,7 +1268,7 @@ def checklist():
                     else:
                         volume = _("Volume Increase", volume=volume)
                     break
-        PLAYLIST_ID=get_playlist_for_schedule("default")
+        PLAYLIST_ID=get_value_for_schedule(key="default",value="playlist")
         if PLAYLIST_ID:
             playlist = _("Playlist Set")
         else:
@@ -1546,10 +1524,10 @@ def play_music():
     global last_playlist, global_devices, last_spotify_run, closest_start_time, last_randomqueue, user_id
     try:
         if target_device:
-            PLAYLIST_ID=get_playlist_for_schedule()
+            PLAYLIST_ID=get_value_for_schedule(value="playlist")
             if PLAYLIST_ID:
                 closest_start_time=None
-                randomqueue=get_randomqueue_for_schedule()
+                randomqueue=get_value_for_schedule(value="randomqueue")
                 playlist_info=get_playlist_info(PLAYLIST_ID)
                 if not randomqueue:
                     sp.start_playback(device_id=target_device["id"], context_uri=f"spotify:playlist:{PLAYLIST_ID}")
@@ -1676,8 +1654,8 @@ def spotify_main():
                         if device.get("is_active"):
                             active_device = device
                     
-                PLAYLIST_ID=get_playlist_for_schedule()
-                randomqueue=get_randomqueue_for_schedule()
+                PLAYLIST_ID=get_value_for_schedule(value="playlist")
+                randomqueue=get_value_for_schedule(value="randomqueue")
                 if (not current_playback) or (not current_playback["is_playing"]) or (not last_playlist==PLAYLIST_ID) or (target_device["id"]!=active_device["id"]) or (last_randomqueue!=randomqueue):
                     if PLAYLIST_ID:
                         play_music()
