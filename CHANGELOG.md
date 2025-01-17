@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.11.0
+### Added:
+- <b>random queue feature</b> - when enabled for specific time slot, Spotify Scheduler will make new, temporary playlist with random tracks from selected playlist and play it. It was added because Spotify's shuffle feature sucks.
+- different app title when automation is paused
+
+### Changed:
+- removed "Killswitch" name from settings
+
 ## 1.10.1
 ### Fixed:
 - translation ("Schedule is empty")

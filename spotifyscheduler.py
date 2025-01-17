@@ -22,8 +22,9 @@ from packaging import version
 import locale
 from platformdirs import PlatformDirs
 from tkinter.messagebox import askyesno
+import random
 
-VER="1.10.1"
+VER="1.11.0"
 CONFIG_FILE="config.json"
 SCHEDULE_FILE="schedule.txt"
 DEFAULT_SCHEDULE_FILE='default-schedule.txt'
@@ -53,6 +54,17 @@ except Exception:
     pass
 
 os.chdir(DATA_DIRECTORY)
+
+# Check if schedule playlists file exists and contains "randomqueue". Fix for upgrading to v1.11.0 and later
+if os.path.exists(SCHEDULE_PLAYLISTS_FILE):
+    try:
+        with open(SCHEDULE_PLAYLISTS_FILE, "r") as file:
+            data = json.load(file)
+            if not any("randomqueue" in entry for entry in data.values()):
+                with open(SCHEDULE_PLAYLISTS_FILE, "w") as file:
+                    json.dump({}, file, indent=4)
+    except Exception:
+        pass
 
 def bundle_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -372,7 +384,7 @@ info_text.insert("insert", f"Szymon Andrzejewski\n", "link1")
 info_text.insert("insert", f"{_('GitHub')}: ")
 info_text.insert("insert", "https://github.com/sandrzejewskipl/Spotify-Scheduler\n", "link2")
 
-info_text.insert("insert", f"\n{_('Made_with')}\n{_('Greetings')}\n\nMIT License - © 2024 Szymon Andrzejewski")
+info_text.insert("insert", f"\n{_('Made_with')}\n{_('Greetings')}\n\nMIT License - © 2025 Szymon Andrzejewski")
 
 info_text.tag_config("header", font=("Arial", 14, "bold"), justify="center")
 info_text.tag_config("link1", foreground="#1DB954", underline=True)
@@ -585,8 +597,7 @@ def generate_schedule_playlists():
             with open(SCHEDULE_PLAYLISTS_FILE, "r+") as json_file:
                 data = json.load(json_file)
                 if "default" in data:
-                    default_key=data["default"]
-                    new_data={"default": default_key}
+                    new_data={"default": data["default"]}
                 json_file.seek(0)
                 json_file.truncate()
                 json.dump(new_data, json_file, indent=4)
@@ -604,11 +615,33 @@ def get_playlist_for_schedule(key=None):
             with open(SCHEDULE_PLAYLISTS_FILE, "r") as file:
                 data = json.load(file)
                 key = key.strip()
-                if key in data:
-                    return data[key]
+                if key in data and "playlist" in data[key]:
+                    return data[key]["playlist"]
 
-                elif "default" in data:
-                    return data["default"]
+                elif "default" in data and "playlist" in data["default"]:
+                    return data["default"]["playlist"]
+                else:
+                    return None
+        except FileNotFoundError:
+            generate_schedule_playlists()
+        except Exception as e:
+            timestamped_print(f"Error during loading playlists file: {error(e)}")
+    return False
+
+def get_randomqueue_for_schedule(key=None):
+    global last_schedule, SCHEDULE_PLAYLISTS_FILE
+    if key==None:
+        key=is_within_schedule()
+    if key:
+        try:
+            with open(SCHEDULE_PLAYLISTS_FILE, "r") as file:
+                data = json.load(file)
+                key = key.strip()
+                if key in data and "randomqueue" in data[key]:
+                    return data[key]["randomqueue"]
+
+                elif "default" in data and "randomqueue" in data["default"]:
+                    return data["default"]["randomqueue"]
                 else:
                     return None
         except FileNotFoundError:
@@ -836,7 +869,7 @@ def load_schedule_playlists():
         with open(SCHEDULE_PLAYLISTS_FILE, "r") as file:
             return json.load(file)
     except (FileNotFoundError, json.JSONDecodeError):
-        return {"default": ""} 
+        return {"default": {"playlist": "", "randomqueue": False}} 
     
 # Save playlist scheduling
 def save_schedule_playlists():
@@ -867,36 +900,60 @@ schedule = playlist_read_schedule_file()
 selected_time = tk.StringVar()
 
 def refresh_playlist_gui(last=None):
-    global schedule, schedule_playlists
+    try:
+        global schedule, schedule_playlists
+        schedule = playlist_read_schedule_file()
+        schedule_playlists = load_schedule_playlists()
 
-    schedule = playlist_read_schedule_file()
-    schedule_playlists = load_schedule_playlists()
-
-    schedule_with_ids = [f"{hour} ({get_playlist_id_for_hour(hour)})" for hour in schedule]
-
-    time_dropdown['values'] = schedule_with_ids
-
-    if schedule_with_ids:
-        if last:
-            matching_item = next((item for item in schedule_with_ids if item.startswith(last + " ")), None)
-            if matching_item:
-                selected_time.set(matching_item)
+        schedule_with_ids = []
+        for hour in schedule:
+            playlist_id = get_playlist_gui_string(hour)
+            if playlist_id==_("same as default"):
+                schedule_with_ids.append(f"{hour} ({_("same as default")})")
+            else:
+                randomqueue_status = f"" 
+                if checkifrandomqueue(hour):
+                    randomqueue_status = f", {_('Random queue')}" 
+                schedule_with_ids.append(f"{hour} ({_('Playlist')}: {playlist_id}{randomqueue_status})")
+        time_dropdown['values'] = schedule_with_ids
+        if schedule_with_ids:
+            if last:
+                matching_item = next((item for item in schedule_with_ids if item.startswith(last + " ")), None)
+                if matching_item:
+                    selected_time.set(matching_item)
+                else:
+                    selected_time.set(schedule_with_ids[0])
             else:
                 selected_time.set(schedule_with_ids[0])
-        else:
-            selected_time.set(schedule_with_ids[0])
 
-    update_view_for_time()
+        update_view_for_time()
+    except Exception as e:
+        timestamped_print(f"Failed to refresh playlist gui: {error(e)}")
 
 
-def get_playlist_id_for_hour(hour):
-    # The function returns the playlist ID for the given time value. If the time does not exist in schedule_playlists, it returns the text "default".
-    default_text=_("same as default")
+def get_playlist_gui_string(hour):
+    default_text={"playlist": _("same as default"), "randomqueue": False}
+
     if hour=="default":
-        default_text=_("No ID set")
+        default_text={"playlist": _("No ID set"), "randomqueue": False}
 
-    return schedule_playlists.get(hour, default_text)
+    if schedule_playlists.get(hour) and not "playlist" in schedule_playlists.get(hour):
+        return _("same as default")
+    else:
+        if schedule_playlists.get(hour, default_text)["playlist"]:
+            return schedule_playlists.get(hour, default_text)["playlist"]
+        else:
+            if hour=="default":
+                return _("No ID set")
+            return ("same as default")
 
+def checkifrandomqueue(key):
+    if not (schedule_playlists.get(key) and "playlist" in schedule_playlists.get(key)):
+        key="default"
+    if schedule_playlists.get(key) and "randomqueue" in schedule_playlists.get(key):
+        return schedule_playlists.get(key)["randomqueue"]
+    else:
+        return False
 
 # Function to update the view based on the selected time
 def update_view_for_time(*args):
@@ -904,7 +961,13 @@ def update_view_for_time(*args):
 
     hour = current_time.split("(")[0].rstrip(" ")
     PLAYLIST_ID = get_playlist_for_schedule(key=hour)
-        
+    
+    randomqueue_var.set(checkifrandomqueue(hour))
+    if (schedule_playlists.get(hour) and "playlist" in schedule_playlists.get(hour)):
+        randomqueue_checkbox.config(state="enabled")
+    else:
+        randomqueue_checkbox.config(state="disabled")
+
     display_playlist_info(PLAYLIST_ID)
 
 
@@ -921,6 +984,7 @@ def change_playlist():
         current_time = selected_time.get().split("(")[0].rstrip(" ") 
 
         playlist_entry.delete(0, tk.END)
+        playlist_table.selection_remove(playlist_table.selection())
         PLAYLIST_ID = extract_playlist_id(user_input) if "open.spotify.com" in user_input else user_input
 
         if not PLAYLIST_ID:
@@ -930,8 +994,10 @@ def change_playlist():
             "name": _("The playlist has been changed but its data could not be retrieved."),
             "image_url": ""
         }
-        
-        schedule_playlists[current_time] = PLAYLIST_ID
+        schedule_playlists.setdefault(current_time, {})
+        schedule_playlists[current_time]["playlist"] = PLAYLIST_ID
+        if not "randomqueue" in schedule_playlists[current_time]:
+            schedule_playlists[current_time]["randomqueue"] = False
         save_schedule_playlists()
         playliststatus_text.set(_(""))
         timestamped_print(f"Playlist for {current_time} updated to {PLAYLIST_ID}.")
@@ -940,6 +1006,19 @@ def change_playlist():
     else:
         playliststatus_text.set(_("Playlist ID can't be blank."))
         timestamped_print(f"Playlist ID can't be blank.")
+
+def change_randomqueue():
+    global playlist_info
+    current_time = selected_time.get().split("(")[0].rstrip(" ") 
+
+    schedule_playlists.setdefault(current_time, {})
+    schedule_playlists[current_time]["randomqueue"] = randomqueue_var.get() 
+    save_schedule_playlists()
+    playliststatus_text.set(_(""))
+    randomqueue_status = 'Enabled' if schedule_playlists[current_time]["randomqueue"] else 'Disabled'
+    timestamped_print(f"Random queue for {current_time} changed to {randomqueue_status}")
+    refresh_playlist_gui(current_time)
+    spotify_main()
 
 def remove_playlist(user_input=None):
     global schedule_playlists
@@ -963,7 +1042,7 @@ time_selection_frame.pack(fill="x", padx=10, pady=(5,0))
 time_label = ttk.Label(time_selection_frame, text=_("Select time slot:"))
 time_label.pack(side="left", padx=5)
 
-time_dropdown = ttk.Combobox(time_selection_frame, textvariable=selected_time, state="readonly", values=schedule, width=50, height=20)
+time_dropdown = ttk.Combobox(time_selection_frame, textvariable=selected_time, state="readonly", values=schedule, width=80, height=20)
 time_dropdown.pack(side="left")
 time_dropdown.bind("<<ComboboxSelected>>", update_view_for_time)
 
@@ -1056,13 +1135,10 @@ change_playlist_btn.pack(side="left", padx=5)
 remove_playlist_btn = ttk.Button(buttons_frame, text=_("Remove Playlist"), command=remove_playlist)
 remove_playlist_btn.pack(side="left", padx=5)
 
-
-
-
-
-
-
-
+# Random queue checkbox
+randomqueue_var = tk.BooleanVar()
+randomqueue_checkbox = ttk.Checkbutton(buttons_frame, text=_("Random queue"), variable=randomqueue_var, command=change_randomqueue, state="disabled")
+randomqueue_checkbox.pack(side="left", padx=5)
 
 def extract_playlist_id(url):
     try:
@@ -1090,8 +1166,9 @@ playlist_table.configure(yscrollcommand=scrollbar.set)
 scrollbar.pack(side="right", fill="y")
 
 username=""
+user_id=None
 def fetch_user_playlists():
-    global username
+    global username, user_id
     playlists = []
     offset = 0
     limit = 50
@@ -1114,6 +1191,8 @@ def fetch_user_playlists():
             display_name=user['display_name']
         if "email" in user:
             email=f"({user['email']})"
+        if "id" in user:
+            user_id=user['id']
         if display_name or email:
             username=(f"{_('Logged in as')}: {display_name} {email}")
     except Exception as e:
@@ -1462,20 +1541,56 @@ def is_within_schedule():
     return match
 
 last_playlist=''
+last_randomqueue=None
 def play_music():
-    global last_playlist, global_devices, last_spotify_run, closest_start_time
+    global last_playlist, global_devices, last_spotify_run, closest_start_time, last_randomqueue, user_id
     try:
         if target_device:
             PLAYLIST_ID=get_playlist_for_schedule()
             if PLAYLIST_ID:
                 closest_start_time=None
-                sp.start_playback(device_id=target_device["id"], context_uri=f"spotify:playlist:{PLAYLIST_ID}")
-                last_playlist=PLAYLIST_ID
+                randomqueue=get_randomqueue_for_schedule()
                 playlist_info=get_playlist_info(PLAYLIST_ID)
+                if not randomqueue:
+                    sp.start_playback(device_id=target_device["id"], context_uri=f"spotify:playlist:{PLAYLIST_ID}")
+                else: #Generate temp playlist when randomqueue enabled.
+
+                    name=playlist_info['name']
+                    tracks = []
+                    limit = 100
+                    offset = 0
+        
+                    while True:
+                        results = sp.playlist_items(
+                            PLAYLIST_ID, 
+                            fields="items(track(uri)),total", 
+                            additional_types=['track'], 
+                            limit=limit, 
+                            offset=offset
+                        )
+                        tracks.extend([item['track']['uri'] for item in results['items']])
+                        offset += limit
+                        if len(results['items']) < limit:
+                            break
+                    track_uris = [track for track in tracks if ":local:" not in track] # remove local tracks
+                    if not track_uris:
+                        status.set(_("No tracks found in playlist"))
+                        return
+                    random.shuffle(track_uris)
+                    #sp.start_playback(device_id=target_device["id"], uris=track_uris[:100])
+                    if not user_id:
+                        user_id = sp.me()['id']
+                    temp_playlist = sp.user_playlist_create(user=user_id, name=f"{name} ({_("Random queue")})", description=f"🔀 Generated by Spotify Scheduler v{VER} on {datetime.now()}", public=False)
+                    sp.current_user_unfollow_playlist(temp_playlist['id'])
+                    sp.playlist_add_items(temp_playlist['id'], track_uris[:100])
+                    sp.start_playback(device_id=target_device["id"], context_uri=f"spotify:playlist:{temp_playlist['id']}")
+                last_playlist=PLAYLIST_ID
+                last_randomqueue=randomqueue
+                randomqueue_status = 'Enabled' if randomqueue else 'Disabled'
                 string=""
                 if playlist_info:
                     string=f"Playlist: {playlist_info['name']}, Owner: {playlist_info['owner']}"
-                timestamped_print(f"Music playing on {target_device['name']}. {string}")
+                timestamped_print(f"Music playing on {target_device['name']}. Random queue: {randomqueue_status}. {string}")
                 last_spotify_run=False
         else:
             status.set(_( "no_active_device"))
@@ -1562,7 +1677,8 @@ def spotify_main():
                             active_device = device
                     
                 PLAYLIST_ID=get_playlist_for_schedule()
-                if (not current_playback) or (not current_playback["is_playing"]) or (not last_playlist==PLAYLIST_ID) or (target_device["id"]!=active_device["id"]):
+                randomqueue=get_randomqueue_for_schedule()
+                if (not current_playback) or (not current_playback["is_playing"]) or (not last_playlist==PLAYLIST_ID) or (target_device["id"]!=active_device["id"]) or (last_randomqueue!=randomqueue):
                     if PLAYLIST_ID:
                         play_music()
                     else:
@@ -1590,7 +1706,7 @@ def spotify_main():
 
 def main():
     global config, newupdate, sp
-    print(f"\n! MIT License - © 2024 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
+    print(f"\n! MIT License - © 2025 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
     print(f"# Spotify Scheduler v{VER} made by Szymon Andrzejewski (https://szymonandrzejewski.pl)")
     print("# Github repository: https://github.com/sandrzejewskipl/spotify-scheduler/") 
     print(f"# Data is stored in {DATA_DIRECTORY}\n") 

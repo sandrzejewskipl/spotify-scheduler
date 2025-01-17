@@ -33,10 +33,10 @@ StringFileInfo(
     StringStruct(u'FileDescription', u'Spotify Scheduler'),
     StringStruct(u'FileVersion', u'1.1.0.0'),
     StringStruct(u'InternalName', u'Spotify Scheduler'),
-    StringStruct(u'LegalCopyright', u'MIT License - (c) 2024 Szymon Andrzejewski'),
+    StringStruct(u'LegalCopyright', u'MIT License - (c) 2025 Szymon Andrzejewski'),
     StringStruct(u'OriginalFilename', u'spotify-scheduler.exe'),
     StringStruct(u'ProductName', u'Spotify Scheduler'),
-    StringStruct(u'ProductVersion', u'1.10.1')])
+    StringStruct(u'ProductVersion', u'1.11.0')])
   ]),
 VarFileInfo([VarStruct(u'Translation', [1033, 1200])]) 
   ]

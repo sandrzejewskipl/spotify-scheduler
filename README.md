@@ -13,10 +13,14 @@ Easily plan and schedule music for any time of day! Modify your schedule, choose
 ### Scheduling playlists
 In the Playlist tab, you can assign playlists to specific time slots. If no playlist is assigned to a slot, the default playlist will be used.
 
+You can also turn on <b>Random queue</b> for specific playlist. It's an alternative to Spotify's shuffle (which is not really random). When starting playback, app will create a temporary playlist with random tracks from your playlist. <b>Random queue doesn't support local tracks!</b>
+
 ![Screenshot of Playlist tab that contains selected playlist for specific time slot and user's playlists from Spotify.](img/playlist.png)
 
 ### Recently played
 In the Recently played tab, you can see your playback history.
+
+![Screenshot of Recently played tab that contains your playback history with time, title and authors](img/recently_played.png)
 
 
 ## Running on Windows
@@ -96,7 +100,7 @@ Click "OK" to save your changes.
 
 <b>Play music only on weekdays</b> - Music will only be played from Monday to Friday. <b>Default: </b>Off
 
-<b>Killswitch</b> - feature that kills the Spotify process(es) when an error with API occurs when pausing the playback. It prevents playing music out of schedule. <b>Default: </b>On
+<b>Kill the spotify process</b> - feature that kills the Spotify process(es) when an error with API occurs when pausing the playback. It prevents playing music out of schedule. <b>Default: </b>On
 
 <b>Auto-launch Spotify</b> - feature that automatically launches Spotify if the device is not detected on the devices list. <b>Default: </b>On
 

@@ -17,7 +17,7 @@ translations = {
         "GitHub": "GitHub",
         "Made_with": "Wykonane z ogromną pomocą sztucznej inteligencji.",
         "Greetings": "Pozdrawiam moją szkołę, to dla was misiaki <3",
-        "Killswitch": "Killswitch - zatrzymaj proces Spotify, gdy wystąpi błąd z API.",
+        "Killswitch": "Zatrzymaj proces Spotify, gdy wystąpi błąd z API.",
         "Auto Spotify": "Automatycznie uruchom Spotify, jeśli urządzenie jest niedostępne.",
         "Weekdays Only": "Odtwarzaj muzykę tylko w dni robocze (poniedziałek - piątek)",
         "Save Settings": "Zapisz ustawienia",
@@ -117,6 +117,10 @@ translations = {
         "Schedule is empty": "Harmonogram jest pusty",
         "Playing soon": "Odtwarzanie wkrótce",
         "Error: Start and end time cannot be the same.": "Błąd: Godzina rozpoczęcia i zakończenia nie mogą być takie same.",
+        "Random queue": "Losowa kolejka",
+        "Enabled": "Włączona",
+        "Disabled": "Wyłączona",
+        "No tracks found in playlist": "Nie znaleziono utworów na playliście",
 
     },
     
@@ -127,7 +131,7 @@ translations = {
         "GitHub": "GitHub",
         "Made_with": "Made with great help from artificial intelligence.",
         "Greetings": "Greetings to my school, it's for you guys <3",
-        "Killswitch": "Killswitch - kill the Spotify process when an error with API occurs.",
+        "Killswitch": "Kill the Spotify process when an error with API occurs.",
         "Auto Spotify": "Auto-launch Spotify if device is unavailable.",
         "Weekdays Only": "Play music only on weekdays (Monday to Friday)",
         "Save Settings": "Save Settings",
