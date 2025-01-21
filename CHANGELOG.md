@@ -4,6 +4,9 @@
 ### Added:
 - auto refresh schedule table on file change
 
+### Changed:
+- code refactor
+
 ### Removed
 - console log when loading schedule into table
 
