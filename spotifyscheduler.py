@@ -501,10 +501,13 @@ devices_list.set("")
 devices_label = ttk.Label(settings_frame, textvariable=devices_list, wraplength=500, anchor="w")
 devices_label.grid(row=10, columnspan=2, pady=10, padx=10, sticky='w')
 
+last_loaded_schedule=""
 def load_schedule_to_table(printstatus=True):
+    global last_loaded_schedule
     try:
         with open(SCHEDULE_FILE, "r") as file:
             lines = file.readlines()
+            last_loaded_schedule=lines
             schedule_table.delete(*schedule_table.get_children())
             try:
                 default_font = font.nametofont("TkDefaultFont").copy()
@@ -521,7 +524,6 @@ def load_schedule_to_table(printstatus=True):
                         schedule_table.insert("", "end", values=(start_time, end_time), tags=("blue",))
                     else:
                         schedule_table.insert("", "end", values=(start_time, end_time))
-        timestamped_print("Schedule loaded into table.")
         if printstatus:
             schedulevar.set(_("Schedule has been reloaded."))
         refresh_playlist_gui()
@@ -1469,7 +1471,7 @@ earliest_start_time=None
 empty_schedule=None
 def is_within_schedule():
     match=False
-    global last_schedule, last_endtime, closest_start_time, last_delay, empty_schedule, earliest_start_time
+    global last_schedule, last_endtime, closest_start_time, last_delay, empty_schedule, earliest_start_time, last_loaded_schedule
     last_schedule=''
     try:
         with open(SCHEDULE_FILE, "r+") as file:
@@ -1511,6 +1513,11 @@ def is_within_schedule():
                 closest_start_time=None
             if not closest_start_time:
                 closest_start_time=earliest_start_time
+            if last_loaded_schedule!=lines:
+                try:
+                    load_schedule_to_table(False)
+                except Exception:
+                    pass
     except FileNotFoundError:
         timestamped_print(f"Schedule file does not exist, it will be created now from default.")
         replace_schedule_with_default()

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.11.1
+### Added:
+- auto refresh schedule table on file change
+
+### Removed
+- console log when loading schedule into table
+
 ## 1.11.0
 ### Added:
 - <b>random queue feature</b> - when enabled for a specific time slot, Spotify Scheduler will make new, temporary playlist with a random tracks from selected playlist and play it. It was added because Spotify's shuffle feature sucks.
