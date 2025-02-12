@@ -28,7 +28,7 @@ In the Recently played tab, you can see your playback history.
 <b>Set up Spotify App:</b>
 
 - Go to [Spotify for Developers Dashboard](https://developer.spotify.com/dashboard) and create a new app.<br>
-- Set the Redirect URI to: `http://localhost:23918`.<br>
+- Set the Redirect URI to: `http://127.0.0.1:23918`.<br>
 - Select Web API<br>
 
 Download an `.exe` file from the latest release <a href="https://github.com/sandrzejewskipl/spotify-scheduler/releases">here</a> and launch it.
@@ -70,7 +70,7 @@ Make sure you have <b>Python3-tk</b> installed.
 <b>Set up Spotify App:</b>
 
 - Go to [Spotify for Developers Dashboard](https://developer.spotify.com/dashboard) and create a new app.<br>
-- Set the Redirect URI to: `http://localhost:23918`.<br>
+- Set the Redirect URI to: `http://127.0.0.1:23918`.<br>
 - Select Web API<br>
 
 Run this command from the command line in the same directory.
