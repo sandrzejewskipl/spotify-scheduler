@@ -105,7 +105,7 @@ Click "OK" to save your changes.
 
 <b>Auto-launch Spotify</b> - feature that automatically launches Spotify if the device is not detected on the devices list. <b>Default: </b>On
 
-For optimal stability and reliable playback automation, it's recommended to enable both the Killswitch and Auto-launch Spotify features.
+For optimal stability and reliable playback automation, it's recommended to enable both the Kill and Auto-launch Spotify features.
 ### After changing CLIENT_ID or CLIENT_SECRET or wanting to change Spotify account (do it by logging in to another account in the browser), click `Delete cache (logout)` button.
 
 App data files (config, schedules, playlists, logs and spotify token) are stored inside user's data directory:
