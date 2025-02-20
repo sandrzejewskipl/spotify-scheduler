@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.11.3
+### Fixed
+- fixed "time data does not match format '%Y-%m-%dT%H:%M:%S.%fZ'
+
 ## 1.11.2
 ### Changed
 - redirect URI changed to 127.0.0.1 from localhost - <b>you need to update it in Spotify for Developers to `http://127.0.0.1:23918`</b> ([that's why](https://developer.spotify.com/blog/2025-02-12-increasing-the-security-requirements-for-integrating-with-spotify))

@@ -24,7 +24,7 @@ from platformdirs import PlatformDirs
 from tkinter.messagebox import askyesno
 import random
 
-VER="1.11.2"
+VER="1.11.3"
 CONFIG_FILE="config.json"
 SCHEDULE_FILE="schedule.txt"
 DEFAULT_SCHEDULE_FILE='default-schedule.txt'
@@ -282,8 +282,8 @@ def fetch_last_played_songs():
         results = sp.current_user_recently_played(limit=50)
         last_played_table.delete(*last_played_table.get_children())
         for item in results['items']:
-            played_at = item['played_at']
-            utc_time = datetime.strptime(played_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+            played_at = str(item['played_at']).split('.')[0]
+            utc_time = datetime.strptime(played_at, "%Y-%m-%dT%H:%M:%S")
                        
             local_now = datetime.now()
             local_tz = local_now.astimezone().tzinfo
