@@ -282,7 +282,7 @@ def fetch_last_played_songs():
         results = sp.current_user_recently_played(limit=50)
         last_played_table.delete(*last_played_table.get_children())
         for item in results['items']:
-            played_at = str(item['played_at']).split('.')[0]
+            played_at = (str(item['played_at']).split('.')[0]).replace("Z","")
             utc_time = datetime.strptime(played_at, "%Y-%m-%dT%H:%M:%S")
                        
             local_now = datetime.now()
