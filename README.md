@@ -14,7 +14,8 @@ Easily plan and schedule music for any time of day! Modify your schedule, choose
 ### Scheduling playlists
 In the Playlist tab, you can assign playlists to specific time slots. If no playlist is assigned to a slot, the default playlist will be used.
 
-You can also turn on <b>Random queue</b> for specific playlist. It's an alternative to Spotify's shuffle (which is not really random). When starting playback, app will create a temporary playlist with random tracks from your playlist. <b>Random queue doesn't support local tracks!</b>
+You can also turn on <b>Random queue</b> for specific playlist. It's an alternative to Spotify's shuffle (which is not really random). When starting playback, app will create a temporary playlist with random tracks from your playlist. <b>Random queue doesn't support local tracks!</b> 
+<h3>If you're using <b>Random queue</b>, disable shuffle option in your Spotify client.</h3>
 
 ![Screenshot of Playlist tab that contains selected playlist for specific time slot and user's playlists from Spotify](img/playlist.png)
 
@@ -85,9 +86,6 @@ If you're running script manually on Windows and you're using cmd.exe (not Windo
 - In the Properties window, click on the “Options” tab.
 - Under the "Edit Options" section, uncheck the box that says "QuickEdit Mode."
 Click "OK" to save your changes.
-
-
-# Remember to turn on shuffle in your Spotify client to play different track each time.
 
 ## Settings
 ![Screenshot of Settings tab](img/settings.png)
