@@ -1301,10 +1301,9 @@ def checklist():
         timestamped_print(f"Checklist error: {error(ex)}")
         checklistvar.set(_("failed_to_fetch_data_console"))
 
-
+def char_limit(s):
+    return s[:50] + ("..." if len(s) > 50 else "")
     
-
-
 lastfetch=None
 lastresponse=None
 lasttype=None
@@ -1372,19 +1371,19 @@ def update_now_playing_info():
                             failed=False
                     except Exception as e:
                         playlist_name = _("failed_to_fetch_data")
-                    playlist_info_str = f"{_('Playlist')}: {playlist_name}"
+                    playlist_info_str = f"{_('Playlist')}: {char_limit(playlist_name)}"
                 if failed:
                     lasttype="album"
                     lastalbum=album['name']
-                    playlist_info_str = f"{_('Album')}: {album['name']}"
+                    playlist_info_str = f"{_('Album')}: {char_limit(album['name'])}"
             
             if not playlist_info_str:
                 playlist_info_str=_("failed_to_fetch_data")
             # Now playing text
             now_playing_label.config(
                 text=(
-            f"{_('Title')}: {title}\n"
-            f"{_('Artist')}: {artist}\n"
+            f"{_('Title')}: {char_limit(title)}\n"
+            f"{_('Artist')}: {char_limit(artist)}\n"
             f"{playlist_info_str}\n"
             f"{_('Device')}: {target_device_name}\n\n"
             f"{_('State')}: {playback_state}\n"

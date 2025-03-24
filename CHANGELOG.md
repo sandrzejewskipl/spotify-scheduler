@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+### Changed:
+- display only first 50 characters of title, author or playlist/album name
+
 ## 1.11.3
 ### Fixed
 - fixed "time data does not match format '%Y-%m-%dT%H:%M:%S.%fZ'
