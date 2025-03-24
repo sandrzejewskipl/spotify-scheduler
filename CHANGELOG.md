@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.11.4
 ### Added:
 - requests timeout to prevent freezing
 
