@@ -147,7 +147,7 @@ def validate_client_credentials(client=None, secret=None):
         "client_secret": secret
     }
     try:
-        response = requests.post(url, headers=headers, data=data)
+        response = requests.post(url, headers=headers, data=data, timeout=5)
     except Exception as e:
         timestamped_print(f"Failed validating client credentials: {error(e)}")
         return False
@@ -179,7 +179,7 @@ def initialize_sp():
     if config['CLIENT_ID']!="" and config['CLIENT_SECRET']!="":
         try:
             if validate_client_credentials():
-                sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=config['CLIENT_ID'],client_secret=config['CLIENT_SECRET'],redirect_uri=REDIRECT_URI,scope=SCOPE), retries=0)
+                sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=config['CLIENT_ID'],client_secret=config['CLIENT_SECRET'],redirect_uri=REDIRECT_URI,scope=SCOPE, requests_timeout=5), retries=0, requests_timeout=5)
                 spstatus=True
                 fetch_user_playlists()
                 timestamped_print("Spotipy initialized properly.")
@@ -187,7 +187,7 @@ def initialize_sp():
             else:
                 sp = fake_sp()
                 spstatus=False
-            sp_anon = spotipy.Spotify(auth_manager=SpotifyAnon(), retries=0)
+            sp_anon = spotipy.Spotify(auth_manager=SpotifyAnon(requests_timeout=5), retries=0, requests_timeout=5)
         except Exception as e:
             timestamped_print(f"Error during spotipy initalization: {error(e)}")
 

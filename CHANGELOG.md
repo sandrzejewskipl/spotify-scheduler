@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+### Added:
+- requests timeout to prevent freezing
+
 ### Changed:
 - display only first 50 characters of title, author or playlist/album name
 
