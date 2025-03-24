@@ -1223,7 +1223,7 @@ def display_playlist_info(id):
     playlist_label.config(text=f"{_('Playlist')}: {playlist_info['name']}\n{_('Owner')}: {playlist_info['owner']}")
 
     if playlist_info["image_url"]:
-        response = requests.get(playlist_info["image_url"])
+        response = requests.get(playlist_info["image_url"], timeout=5)
         if response.status_code == 200:
             img_data = BytesIO(response.content)
             img = Image.open(img_data)
@@ -1394,7 +1394,7 @@ def update_now_playing_info():
             if lastresponse!=track["album"]:
                 album_images = track["album"].get("images", [])
                 if album_images:
-                    response = requests.get(album_images[0]["url"])
+                    response = requests.get(album_images[0]["url"], timeout=5)
                     if response.status_code == 200:
                         img_data = BytesIO(response.content)
                         img = Image.open(img_data)
@@ -1769,7 +1769,7 @@ def main():
         global newupdate
         newupdate=""
         try:
-            response = requests.get("https://api.github.com/repos/sandrzejewskipl/spotify-scheduler/releases/latest")
+            response = requests.get("https://api.github.com/repos/sandrzejewskipl/spotify-scheduler/releases/latest", timeout=5)
             if response:
                 if response.json()["tag_name"]:
                     if is_canonical(VER) and is_canonical(response.json()["tag_name"]):
