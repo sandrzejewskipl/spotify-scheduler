@@ -24,6 +24,8 @@ In the Recently played tab, you can see your playback history.
 
 ![Screenshot of Recently played tab that contains your playback history with time, title and authors](img/recently_played.png)
 
+> [!IMPORTANT]
+> Make sure you got Spotify Premium subscription and are using Spotify's desktop app - not web version!
 
 ## Running on Windows
 <b>Set up Spotify App:</b>
