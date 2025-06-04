@@ -1,4 +1,8 @@
 # Changelog
+## Unreleased
+### Added:
+- scrollbar in console tab
+
 
 ## 1.11.4
 ### Added:

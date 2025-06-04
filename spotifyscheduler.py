@@ -330,7 +330,12 @@ notebook.add(info_frame, text=_("About"))
 LOG_FILE = open(LOG_FILE, "a", encoding="utf-8")
 
 console_text = tk.Text(console_frame, wrap="word", height=20, width=100, font=("Arial", 10))
-console_text.pack(expand=True, fill="both", padx=10, pady=10)
+console_text.pack(side="left", expand=True, fill="both", padx=10, pady=10)
+
+console_scrollbar = ttk.Scrollbar(console_frame, orient="vertical", command=console_text.yview)
+console_scrollbar.pack(side="right", fill="y")
+
+console_text.configure(yscrollcommand=console_scrollbar.set)
 
 # Redirecting stdout to console and file
 class Logger:
