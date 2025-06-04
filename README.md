@@ -105,6 +105,8 @@ Click "OK" to save your changes.
 
 <b>Auto-launch Spotify</b> - feature that automatically launches Spotify if the device is not detected on the devices list. <b>Default: </b>On
 
+<b>Skip explicit songs</b> - explicit content will be automaticlly skipped. <b>Default: </b>Off
+
 For optimal stability and reliable playback automation, it's recommended to enable both the Kill and Auto-launch Spotify features.
 ### After changing CLIENT_ID or CLIENT_SECRET or wanting to change Spotify account (do it by logging in to another account in the browser), click `Delete cache (logout)` button.
 

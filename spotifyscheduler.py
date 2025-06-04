@@ -24,7 +24,7 @@ from platformdirs import PlatformDirs
 from tkinter.messagebox import askyesno
 import random
 
-VER="1.11.4"
+VER="1.12.0"
 CONFIG_FILE="config.json"
 SCHEDULE_FILE="schedule.txt"
 DEFAULT_SCHEDULE_FILE='default-schedule.txt'
@@ -43,6 +43,7 @@ def timestamped_print(message):
     print(f"{current_time} | {message}")
  
 def error(e):
+    e = "Spotify Premium subscription is required" if "PREMIUM_REQUIRED" in str(e) else e
     string=f'\n\033[91m{e}\033[0m'
     return string
 
@@ -95,7 +96,8 @@ def load_config():
         "DEVICE_NAME": platform.node() if hasattr(platform, "node") else "",
         "KILLSWITCH_ON": True,
         "WEEKDAYS_ONLY": False,
-        "AUTO_SPOTIFY": True
+        "AUTO_SPOTIFY": True,
+        "SKIP_EXPLICIT": False
     }
 
     try:
@@ -213,6 +215,7 @@ def save_settings():
         config['KILLSWITCH_ON'] = setting_vars['KILLSWITCH_ON'].get()
         config['WEEKDAYS_ONLY'] = setting_vars['WEEKDAYS_ONLY'].get() 
         config['AUTO_SPOTIFY'] = setting_vars['AUTO_SPOTIFY'].get() 
+        config['SKIP_EXPLICIT'] = setting_vars['SKIP_EXPLICIT'].get()
 
         save_config(config)
         config = load_config()
@@ -389,7 +392,7 @@ info_text.insert("insert", f"Szymon Andrzejewski\n", "link1")
 info_text.insert("insert", f"{_('GitHub')}: ")
 info_text.insert("insert", "https://github.com/sandrzejewskipl/Spotify-Scheduler\n", "link2")
 
-info_text.insert("insert", f"\n{_('Made_with')}\n{_('Greetings')}\n\nMIT License - © 2025 Szymon Andrzejewski")
+info_text.insert("insert", f"\n{_('github_star')}\n\nMIT License - © 2025 Szymon Andrzejewski")
 
 info_text.tag_config("header", font=("Arial", 14, "bold"), justify="center")
 info_text.tag_config("link1", foreground="#1DB954", underline=True)
@@ -472,6 +475,16 @@ ttk.Label(settings_frame, text=_("Device name:")).grid(row=3, column=0, padx=10,
 setting_entries['DEVICE_NAME'] = ttk.Entry(settings_frame, width=50)
 setting_entries['DEVICE_NAME'].grid(row=3, column=1, pady=5)
 
+# Button to set input to device name
+def set_device_name():
+    setting_entries['DEVICE_NAME'].delete(0, tk.END)
+    setting_entries['DEVICE_NAME'].insert(0, platform.node())
+    on_settings_change()
+
+if hasattr(platform, "node"):
+    set_device_btn = ttk.Button(settings_frame, text=_("This device"), command=set_device_name)
+    set_device_btn.grid(row=3, column=2, padx=5, pady=5)
+
 # SWITCHES
 setting_vars['KILLSWITCH_ON'] = tk.BooleanVar(value=config.get('KILLSWITCH_ON', False))
 ttk.Checkbutton(settings_frame, text=_("Killswitch"), variable=setting_vars['KILLSWITCH_ON']).grid(row=5, columnspan=2, pady=5,padx=5)
@@ -482,8 +495,11 @@ ttk.Checkbutton(settings_frame, text=_("Weekdays Only"), variable=setting_vars['
 setting_vars['AUTO_SPOTIFY'] = tk.BooleanVar(value=config.get('AUTO_SPOTIFY', False))
 ttk.Checkbutton(settings_frame, text=_("Auto Spotify"), variable=setting_vars['AUTO_SPOTIFY']).grid(row=6, columnspan=2, pady=5,padx=5)
 
+setting_vars['SKIP_EXPLICIT'] = tk.BooleanVar(value=config.get('SKIP_EXPLICIT', False))
+ttk.Checkbutton(settings_frame, text=_("Skip explicit tracks"), variable=setting_vars['SKIP_EXPLICIT']).grid(row=7, columnspan=2, pady=5,padx=5)
+
 buttons_frame = ttk.Frame(settings_frame)
-buttons_frame.grid(row=7, column=0, columnspan=2, pady=10)
+buttons_frame.grid(row=8, column=0, columnspan=2, pady=10)
 
 save_btn = ttk.Button(buttons_frame, text=_("Save Settings"), command=save_settings)
 save_btn.pack(side="left", padx=5)
@@ -495,10 +511,35 @@ settingsstatus_text = tk.StringVar()
 settingsstatus_text.set("")
 
 settingsstatus = ttk.Label(settings_frame, textvariable=settingsstatus_text, wraplength=500, anchor="w")
-settingsstatus.grid(row=8, columnspan=2, padx=10)
+settingsstatus.grid(row=9, columnspan=2, padx=10)
 
-text_label = ttk.Label(settings_frame, text="EN: After changing the language, restart the application to apply the changes. \nPL: Po zmianie języka zrestartuj aplikację, aby zastosować zmiany.", foreground="green")
-text_label.grid(row=9, columnspan=2, padx=10, sticky='w', pady=5)
+def on_settings_change(*args):
+    # Check if any setting differs from config
+    unsaved = False
+    # Check language
+    if language_var.get() != config.get('LANG', 'en'):
+        unsaved = True
+    # Check entries
+    for key, entry in setting_entries.items():
+        if entry.get() != str(config.get(key, "")):
+            unsaved = True
+    # Check checkboxes
+    for key, var in setting_vars.items():
+        if var.get() != config.get(key, False):
+            unsaved = True
+    if unsaved:
+        settingsstatus_text.set(_("Unsaved changes"))
+    else:
+        settingsstatus_text.set("")
+
+# Bind changes for language
+language_var.trace_add("write", on_settings_change)
+# Bind changes for entries
+for entry in setting_entries.values():
+    entry.bind("<KeyRelease>", lambda e: on_settings_change())
+# Bind changes for checkboxes
+for var in setting_vars.values():
+    var.trace_add("write", on_settings_change)
 
 devices_list = tk.StringVar()
 devices_list.set("")
@@ -1254,13 +1295,8 @@ now_playing_image_label = ttk.Label(now_playing_frame)
 now_playing_image_label.pack(padx=10, pady=10)
 
 def checklist():
-    global global_devices
     try:
-        #limit spotify api calls
-        if global_devices or global_devices==False:
-            devices = global_devices
-        else:
-            devices = sp.devices()
+        devices = cached_spotify_data("devices")
         found_device = _("Device Not Found")
         volume = _("Check Manually")
         proces = ''
@@ -1321,27 +1357,23 @@ def update_now_playing_info():
         checklistvar.set(_("Spotify credentials are not valid.\nChange CLIENT ID and CLIENT SECRET or fix internet connection."))
         return
     try:
-        # LIMIT SPOTIFY API CALLS
-        if global_playback or global_playback==False:
-            current_playback = global_playback
-        else:
-            current_playback = sp.current_playback()
-
-        if global_devices or global_devices==False:
-            devices = global_devices
-        else:
-            devices = sp.devices()
+        current_playback = cached_spotify_data("current_playback")
+        devices = cached_spotify_data("devices")
 
         # Get active device
         target_device_name = _("No device")
         device_list=''
+        webplayer=""
         if devices and "devices" in devices:
             for device in devices["devices"]:
                 name = device.get("name", _("Unknown device"))
-                device_list+=(f"• {name} ")
+                if "web player" not in name.lower():
+                    device_list+=(f"• {name} ")
+                else:
+                    webplayer="\n"+_("Web players were detected but are not supported.")+"\n"
                 if device.get("is_active"):
                     target_device_name = name
-        devices_string=f"{username}\n\n{_('Detected devices')}:\n{device_list}"
+        devices_string=f"{username}\n\n{_('Detected devices')}:\n{device_list}\n{webplayer}"
         devices_list.set(devices_string)
 
         if current_playback and "item" in current_playback and current_playback["item"]:
@@ -1420,6 +1452,8 @@ def update_now_playing_info():
     except Exception as e:
         timestamped_print(f"Error during updating now playing info: {error(e)}")
         now_playing_label.config(text=_("failed_to_fetch_data"))
+        now_playing_image_label.config(image="")
+        now_playing_image_label.image = None
 
     checklist()
 
@@ -1532,7 +1566,7 @@ def is_within_schedule():
 last_playlist=''
 last_randomqueue=None
 def play_music():
-    global last_playlist, global_devices, last_spotify_run, closest_start_time, last_randomqueue, user_id
+    global last_playlist, last_spotify_run, closest_start_time, last_randomqueue, user_id
     try:
         if target_device:
             PLAYLIST_ID=get_value_for_schedule(value="playlist")
@@ -1544,19 +1578,42 @@ def play_music():
                     sp.start_playback(device_id=target_device["id"], context_uri=f"spotify:playlist:{PLAYLIST_ID}")
                 else: #Generate temp playlist when randomqueue enabled.
 
+                    #check for spotify owned playlists that raises 404 errors
+                    check=False
+                    # Spotipy doesn't log 404 errors as an exception, so temporarily disable logging.
+                    logger = logging.getLogger("spotipy.client")
+                    original_level = logger.level
+                    logger.setLevel(logging.CRITICAL)
+                    try: 
+                        sp.playlist(PLAYLIST_ID)
+                        check=True
+                    except Exception:
+                        pass
+                    finally:
+                        logger.setLevel(original_level) # Bring back original logging
+
                     name=playlist_info['name']
                     tracks = []
                     limit = 100
                     offset = 0
-        
+
                     while True:
-                        results = sp.playlist_items(
-                            PLAYLIST_ID, 
-                            fields="items(track(uri)),total", 
-                            additional_types=['track'], 
-                            limit=limit, 
-                            offset=offset
-                        )
+                        if check:
+                            results = sp.playlist_items(
+                                PLAYLIST_ID, 
+                                fields="items(track(uri)),total", 
+                                additional_types=['track'], 
+                                limit=limit, 
+                                offset=offset
+                            )
+                        else:
+                            results = sp_anon.playlist_items(
+                                PLAYLIST_ID, 
+                                fields="items(track(uri)),total", 
+                                additional_types=['track'], 
+                                limit=limit, 
+                                offset=offset
+                            )
                         tracks.extend([item['track']['uri'] for item in results['items']])
                         offset += limit
                         if len(results['items']) < limit:
@@ -1594,7 +1651,7 @@ def play_music():
 
 last_spotify_run=False
 def pause_music(retries=3, delay=2):
-    global last_delay, global_playback, last_spotify_run
+    global last_delay, last_spotify_run
     last_spotify_run = False
 
     if not spstatus:
@@ -1605,13 +1662,8 @@ def pause_music(retries=3, delay=2):
     while attempt < retries:
         try:
             took_time=datetime.now()
-            global_playback=None
 
-            current_playback = sp.current_playback()
-            global_playback = current_playback
-
-            if not global_playback:
-                global_playback=False #reduce api calls when None
+            current_playback = cached_spotify_data("current_playback", True)
 
             if current_playback and "is_playing" in current_playback:
                 if current_playback["is_playing"]:
@@ -1634,27 +1686,15 @@ def pause_music(retries=3, delay=2):
     timestamped_print("Failed to pause playback after multiple attempts.")
     killswitch("Pausing music - Failed to pause music.")
 
-global_playback = None
-global_devices = None
 def spotify_main():
-    global last_playlist, global_playback, global_devices, target_device
+    global last_playlist, target_device
     if not is_paused:
         if not sp or not spstatus:
             initialize_sp()
         if is_within_schedule():
             try:
-                global_playback=None
-                global_devices=None
-
-                current_playback = sp.current_playback()
-                global_playback = current_playback
-                if not global_playback: #reduce api calls
-                    global_playback=False
-
-                devices = sp.devices()
-                global_devices = devices
-                if not global_devices: #reduce api calls
-                    global_devices=False
+                current_playback = cached_spotify_data("current_playback")
+                devices = cached_spotify_data("devices")
 
                 target_device = None
                 active_device = None
@@ -1674,6 +1714,14 @@ def spotify_main():
                         status.set(_("Playlist not set"))
                 else:
                     status.set(_("Music is currently playing."))
+                    try:
+                        if config['SKIP_EXPLICIT'] and current_playback and current_playback["item"].get("explicit"):
+                            sp.next_track(device_id=target_device["id"])
+                            status.set(_("Skipped explicit song"))
+                            timestamped_print(f"Skipped explicit song: {current_playback['item']['artists'][0]['name']} - {current_playback['item']['name']} ")
+                    except Exception as e:
+                        timestamped_print(f"Error skipping explicit song: {error(e)}")
+
             except Exception as ex:
                 timestamped_print(f"Error getting playback status: {error(ex)}")
                 if ("token" in str(ex)) or ("Expecting value" in str(ex)):
@@ -1681,17 +1729,30 @@ def spotify_main():
         else:
             status.set(_("out_of_schedule"))
             pause_music()
-            global_devices=None
-            try:
-                global_devices = sp.devices()
-
-                if not global_devices: #reduce api calls
-                    global_devices=False
-            except Exception:
-                pass
     else:
         status.set(_("Automation is paused"))
     update_now_playing_info()
+
+cache = {
+    "current_playback": {"data": None, "timestamp": 0},
+    "devices": {"data": None, "timestamp": 0}
+}
+def cached_spotify_data(data_type, force=False):
+    """
+    data_type: "current_playback" or "devices"
+    """
+    if data_type not in cache:
+        raise ValueError("Invalid data_type. Use 'current_playback' or 'devices'.")
+    if (t.time() - cache[data_type]["timestamp"] < 2.5) and not force:
+        return cache[data_type]["data"]
+    cache[data_type]["timestamp"] = t.time()
+    if data_type == "current_playback":
+        data = sp.current_playback()
+    elif data_type == "devices":
+        data = sp.devices()
+    cache[data_type]["timestamp"] = t.time() 
+    cache[data_type]["data"] = data
+    return data
 
 def main():
     global config, newupdate, sp

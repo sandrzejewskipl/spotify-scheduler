@@ -1,8 +1,19 @@
 # Changelog
-## Unreleased
+## 1.12.0
 ### Added:
 - scrollbar in console tab
+- unsaved changes notice, set to default device name in settings tab
+- skip explicit tracks option
+- warning for web players
 
+### Changed:
+- caching api requests
+- updated dependencies
+- display no image when unable fetch now playing
+- changed about tab
+
+### Fixed:
+- Spotify's playlist weren't played when Random queue was enabled
 
 ## 1.11.4
 ### Added:
