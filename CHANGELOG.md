@@ -7,7 +7,7 @@
 - warning for web players
 
 ### Changed:
-- better caching api requests
+- better caching of api requests
 - updated dependencies
 - display no image when unable to fetch now playing
 - changed about tab
