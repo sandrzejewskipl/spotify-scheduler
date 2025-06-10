@@ -127,8 +127,10 @@ translations = {
         "Account": "Konto",
         "This warning will close in 15 seconds.": "To ostrzeżenie zamknie się za 15 sekund.",
         "Spotify Premium Required": "Wymagane Spotify Premium",
+        "Title & Random Queue not available due to API limitations for Spotify's curated playlists.": "Tytuł i losowa kolejka nie są dostępne z powodu ograniczeń API dla playlist od Spotify.",
         "You are not using Spotify Premium!": "Nie korzystasz z Spotify Premium!",
         "> I understand <": "> Rozumiem <",
+        "Unknown": "Nieznana",
 
     },
     

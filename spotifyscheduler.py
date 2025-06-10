@@ -16,7 +16,6 @@ import subprocess
 import platform
 from translations import translations
 import os
-from spotipy_anon import SpotifyAnon
 import logging
 from packaging import version
 import locale
@@ -172,9 +171,8 @@ class fake_sp:
 
 
 def initialize_sp():
-    global sp, sp_anon, spstatus, last_spotify_run
+    global sp, spstatus, last_spotify_run
     sp=None
-    sp_anon=None
     REDIRECT_URI = "http://127.0.0.1:23918"
     SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-playback-position user-top-read user-read-recently-played user-read-email"
     
@@ -189,7 +187,6 @@ def initialize_sp():
             else:
                 sp = fake_sp()
                 spstatus=False
-            sp_anon = spotipy.Spotify(auth_manager=SpotifyAnon(requests_timeout=5), retries=0, requests_timeout=5)
         except Exception as e:
             timestamped_print(f"Error during spotipy initalization: {error(e)}")
 
@@ -938,7 +935,7 @@ def refresh_playlist_gui(last=None):
                 schedule_with_ids.append(f"{hour} ({_("same as default")})")
             else:
                 randomqueue_status = f"" 
-                if checkifrandomqueue(hour):
+                if checkifrandomqueue(hour) and "37i9dQ" not in playlist_id:
                     randomqueue_status = f", {_('Random queue')}" 
                 schedule_with_ids.append(f"{hour} ({_('Playlist')}: {playlist_id}{randomqueue_status})")
         time_dropdown['values'] = schedule_with_ids
@@ -989,7 +986,12 @@ def update_view_for_time(*args):
     PLAYLIST_ID = get_value_for_schedule(key=hour,value="playlist")
     
     randomqueue_var.set(checkifrandomqueue(hour))
-    if (schedule_playlists.get(hour) and "playlist" in schedule_playlists.get(hour)):
+    randomqueue_checkbox.config(text=_("Random queue"))
+    if("37i9dQ" in PLAYLIST_ID):
+        randomqueue_checkbox.config(state="disabled")
+        randomqueue_var.set(False)
+        randomqueue_checkbox.config(text=_("Random queue"))
+    elif(schedule_playlists.get(hour) and "playlist" in schedule_playlists.get(hour)):
         randomqueue_checkbox.config(state="enabled")
     else:
         randomqueue_checkbox.config(state="disabled")
@@ -1080,18 +1082,9 @@ def get_spotify_playlist(id=None):
     if not id:
         return None
     
-    # Spotipy doesn't log 404 errors as an exception, so temporarily disable logging.
-    logger = logging.getLogger("spotipy.client")
-    original_level = logger.level
-    logger.setLevel(logging.CRITICAL)
-
-    try:
-        return sp_anon.playlist(id)
-    except Exception:
-        return sp.playlist(id)
-    finally:
-        logger.setLevel(original_level) # Bring back original logging
-    
+    if("37i9dQ" in id):
+        return {"name": f"{_("Unknown")}", "owner": {"display_name": f"Spotify"}, "scheduler_warning": True, "images": []}
+    return sp.playlist(id)
 
 def get_playlist_info(id=None):
     playlist_info = {
@@ -1111,6 +1104,8 @@ def get_playlist_info(id=None):
                 playlist_info["name"] = playlist["name"]
             if playlist["owner"]['display_name']:
                 playlist_info["owner"] = playlist["owner"]['display_name']
+            if "scheduler_warning" in playlist:
+                playlist_info["scheduler_warning"] = playlist["scheduler_warning"]
 
 
             # Get playlist image url
@@ -1265,8 +1260,11 @@ playlists_label.pack(side='left', pady=10)
 
 def display_playlist_info(id):
     playlist_info = get_playlist_info(id)
+    warning=""
+    if "scheduler_warning" in playlist_info:
+        warning=f"\n\n{_("Title & Random Queue not available due to API limitations for Spotify's curated playlists.")}"
 
-    playlist_label.config(text=f"{_('Playlist')}: {playlist_info['name']}\n{_('Owner')}: {playlist_info['owner']}")
+    playlist_label.config(text=f"{_('Playlist')}: {playlist_info['name']}\n{_('Owner')}: {playlist_info['owner']}{warning}")
 
     if playlist_info["image_url"]:
         response = requests.get(playlist_info["image_url"], timeout=5)
@@ -1574,46 +1572,20 @@ def play_music():
                 closest_start_time=None
                 randomqueue=get_value_for_schedule(value="randomqueue")
                 playlist_info=get_playlist_info(PLAYLIST_ID)
-                if not randomqueue:
-                    sp.start_playback(device_id=target_device["id"], context_uri=f"spotify:playlist:{PLAYLIST_ID}")
-                else: #Generate temp playlist when randomqueue enabled.
-
-                    #check for spotify owned playlists that raises 404 errors
-                    check=False
-                    # Spotipy doesn't log 404 errors as an exception, so temporarily disable logging.
-                    logger = logging.getLogger("spotipy.client")
-                    original_level = logger.level
-                    logger.setLevel(logging.CRITICAL)
-                    try: 
-                        sp.playlist(PLAYLIST_ID)
-                        check=True
-                    except Exception:
-                        pass
-                    finally:
-                        logger.setLevel(original_level) # Bring back original logging
-
+                if (randomqueue and "37i9dQ" not in PLAYLIST_ID):
                     name=playlist_info['name']
                     tracks = []
                     limit = 100
                     offset = 0
 
                     while True:
-                        if check:
-                            results = sp.playlist_items(
-                                PLAYLIST_ID, 
-                                fields="items(track(uri)),total", 
-                                additional_types=['track'], 
-                                limit=limit, 
-                                offset=offset
-                            )
-                        else:
-                            results = sp_anon.playlist_items(
-                                PLAYLIST_ID, 
-                                fields="items(track(uri)),total", 
-                                additional_types=['track'], 
-                                limit=limit, 
-                                offset=offset
-                            )
+                        results = sp.playlist_items(
+                            PLAYLIST_ID, 
+                            fields="items(track(uri)),total", 
+                            additional_types=['track'], 
+                            limit=limit, 
+                            offset=offset
+                        )
                         tracks.extend([item['track']['uri'] for item in results['items']])
                         offset += limit
                         if len(results['items']) < limit:
@@ -1630,9 +1602,12 @@ def play_music():
                     sp.current_user_unfollow_playlist(temp_playlist['id'])
                     sp.playlist_add_items(temp_playlist['id'], track_uris[:100])
                     sp.start_playback(device_id=target_device["id"], context_uri=f"spotify:playlist:{temp_playlist['id']}")
+                else:
+                    sp.start_playback(device_id=target_device["id"], context_uri=f"spotify:playlist:{PLAYLIST_ID}")
+
                 last_playlist=PLAYLIST_ID
                 last_randomqueue=randomqueue
-                randomqueue_status = 'Enabled' if randomqueue else 'Disabled'
+                randomqueue_status = 'Enabled' if (randomqueue and "37i9dQ" not in PLAYLIST_ID) else 'Disabled'
                 string=""
                 if playlist_info:
                     string=f"Playlist: {playlist_info['name']}, Owner: {playlist_info['owner']}"
