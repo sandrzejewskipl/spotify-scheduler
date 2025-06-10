@@ -6,6 +6,8 @@ import psutil
 import sys
 import tkinter as tk
 from tkinter import ttk, font
+from tkinter import filedialog, messagebox
+import base64
 import re
 from PIL import Image, ImageTk
 from io import BytesIO
@@ -317,6 +319,8 @@ lastplayedvar.set("sdf")
 lastplayed_label = ttk.Label(button_frame, textvariable=lastplayedvar, font=("Arial", 10))
 lastplayed_label.grid(row=0, column=1, padx=5, sticky="w")
 
+import_export_frame = ttk.Frame(notebook)
+notebook.add(import_export_frame, text=_("Import/Export"))
 
 settings_frame = ttk.Frame(notebook)
 notebook.add(settings_frame, text=_("Settings"))
@@ -326,6 +330,416 @@ notebook.add(console_frame, text=_("Console"))
 
 info_frame = ttk.Frame(notebook)
 notebook.add(info_frame, text=_("About"))
+
+def export_playlist():
+    try:
+        # Ask user to select a playlist from the list or enter a URL/ID
+        def do_export(playlist_input):
+            playlist_id = playlist_input
+            if "open.spotify.com" in playlist_input:
+                playlist_id = extract_playlist_id(playlist_input)
+            if "37i9dQ" in playlist_id:
+                messagebox.showerror(_("Export Playlist"), _("You cannot export Spotify's curated playlists due to API limitations."))
+                return
+            if not playlist_id:
+                messagebox.showerror(_("Export Playlist"), _("No playlist selected."))
+                return
+            
+            tracks = []
+            limit = 100
+            offset = 0
+
+            while True:
+                results = sp.playlist_items(
+                    playlist_id, 
+                    fields="items(track(uri, name, artists(name))),total",
+                    additional_types=['track'],
+                    limit=limit, 
+                    offset=offset
+                )
+                for item in results['items']:
+                    track = item['track']
+                    if track:
+                        tracks.append({
+                            "uri": track['uri'],
+                            "name": track['name'],
+                            "artists": [artist['name'] for artist in track['artists']]
+                        })
+                offset += limit
+                if len(results['items']) < limit:
+                    break
+            track_uris = [track for track in tracks if ":local:" not in track.get("uri", "")] # remove local tracks
+            # Get playlist name for metadata and default filename
+            playlist_name = ""
+            try:
+                playlist_data = sp.playlist(playlist_id)
+                playlist_name = playlist_data.get("name", "")
+                total_tracks = playlist_data.get("tracks", {}).get("total", 0)
+            except Exception:
+                playlist_name = playlist_id
+                total_tracks = 0
+
+            # Sanitize playlist name for filename
+            safe_name = re.sub(r'[\\/*?:"<>|]', "_", playlist_name) or "playlist"
+            date_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            default_filename = f"{safe_name}_{date_str}.json"
+
+            export_file = filedialog.asksaveasfilename(
+                defaultextension=".json",
+                filetypes=[("JSON files", "*.json")],
+                title=_("Export Playlist As"),
+                initialfile=default_filename
+            )
+            if export_file:
+                image_b64 = None
+                try:
+                    if playlist_data.get("images"):
+                        image_url = playlist_data["images"][0].get("url")
+                        if image_url:
+                            response = requests.get(image_url, timeout=5)
+                            if response.status_code == 200:
+                                image_b64 = base64.b64encode(response.content).decode("utf-8")
+                except Exception as e:
+                    image_b64 = None
+
+                export_data = {
+                    "metadata": {
+                        "original_name": playlist_name,
+                        "exported_by": "Spotify Scheduler",
+                        "exported_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "image_b64": image_b64
+                    },
+                    "tracks": track_uris
+                }
+                with open(export_file, "w", encoding="utf-8") as f:
+                    json.dump(export_data, f, indent=2, ensure_ascii=False)
+                messagebox.showinfo(
+                    _("Export Playlist"),
+                    _("Playlist exported successfully.") + f"\n{_('Tracks exported')}: {len(track_uris)}/{total_tracks}\n{_('File saved at')}: {export_file}"
+                )
+                timestamped_print(f"Exported playlist {playlist_id} to {export_file}")
+
+        def on_select():
+            user_input = playlist_var.get().strip()
+            select_win.destroy()
+            do_export(user_input)
+
+        def on_entry_enter(event):
+            on_select()
+
+        # Fetch user playlists for selection
+        playlists = []
+        offset = 0
+        limit = 50
+        while True:
+            try:
+                response = sp.current_user_playlists(limit=limit, offset=offset)
+                playlists.extend(response['items'])
+                if len(response['items']) < limit:
+                    break
+                offset += limit
+            except Exception:
+                break
+
+        select_win = tk.Toplevel(root)
+        select_win.title(_("Select Playlist to Export"))
+        select_win.geometry("600x400")
+        select_win.resizable(False, False)
+        # Set window icon if available
+        try:
+            if os.name == 'nt':
+                select_win.iconbitmap(bundle_path("icon.ico"))
+        except Exception:
+            pass
+        # Center the window relative to the root window
+        select_win.update_idletasks()
+        root.update_idletasks()
+        x = root.winfo_x() + (root.winfo_width() - select_win.winfo_width()) // 2
+        y = root.winfo_y() + (root.winfo_height() - select_win.winfo_height()) // 2
+        select_win.geometry(f"+{x}+{y}")
+
+        ttk.Label(select_win, text=_("Choose from your playlists:")).pack(pady=10)
+
+        playlist_var = tk.StringVar()
+        # Frame for listbox and scrollbar
+        listbox_frame = ttk.Frame(select_win)
+        listbox_frame.pack(pady=5, padx=10, fill="both", expand=True)
+
+        # Listbox with custom font and highlight
+        custom_font = font.Font(family="Arial", size=10)
+        playlist_listbox = tk.Listbox(
+            listbox_frame,
+            width=60,
+            height=12,
+            font=custom_font,
+            selectbackground="#8BEBAD",
+            selectforeground="black",
+            activestyle="none",
+            relief="flat",
+            borderwidth=2,
+            highlightthickness=1,
+        )
+        playlist_id_map = {}
+
+        for idx, playlist in enumerate(playlists):
+            display = f"{playlist['name']} ({playlist['id']})"
+            playlist_listbox.insert(tk.END, display)
+            playlist_id_map[idx] = playlist['id']
+            # Set background color for even rows
+            if idx % 2 == 0:
+                playlist_listbox.itemconfig(idx, background="#e6e6e6")  # light gray for even
+
+        # Add a scrollbar
+        scrollbar = ttk.Scrollbar(listbox_frame, orient="vertical", command=playlist_listbox.yview)
+        playlist_listbox.config(yscrollcommand=scrollbar.set)
+        playlist_listbox.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Entry for manual input
+        entry_frame = ttk.Frame(select_win)
+        entry_frame.pack(pady=5)
+        ttk.Label(entry_frame, text=_("Or enter playlist URL/ID:")).pack(side="left")
+        entry = ttk.Entry(entry_frame, textvariable=playlist_var, width=35)
+        entry.pack(side="left", padx=5)
+        entry.bind('<Return>', on_entry_enter)
+
+        def on_listbox_select(event):
+            selection = playlist_listbox.curselection()
+            if selection:
+                idx = selection[0]
+                playlist_var.set(playlist_id_map[idx])
+
+        playlist_listbox.bind('<<ListboxSelect>>', on_listbox_select)
+
+        ttk.Button(select_win, text=_("Export"), command=on_select).pack(pady=10)
+        entry.focus_set()
+        select_win.transient(root)
+        select_win.grab_set()
+        root.wait_window(select_win)
+
+        # If user closed the window without selection, do nothing
+
+    except Exception as e:
+        messagebox.showerror(_("Export Playlist"), _("Failed to export playlist: ") + str(e))
+        timestamped_print(f"Failed to export playlist: {error(e)}")
+
+def import_playlist():
+    try:
+        import_file = filedialog.askopenfilename(
+            filetypes=[("JSON files", "*.json")],
+            title=_("Import Playlist From")
+        )
+        if not import_file:
+            return
+        with open(import_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # Check if file has Spotify Scheduler metadata
+        if isinstance(data, dict) and "metadata" in data and "tracks" in data and "Spotify Scheduler" in data["metadata"].get("exported_by"):
+            tracks = data["tracks"]
+            original_name = data["metadata"].get("original_name", "")
+            exported_at = data["metadata"].get("exported_at", "")
+        else:
+            messagebox.showerror(_("Import Playlist"), _("This file was not exported by Spotify Scheduler."))
+            return
+
+        if not tracks:
+            messagebox.showerror(_("Import Playlist"), _("No tracks found in the imported file."))
+            return
+
+        # Show a dialog listing all tracks and count before proceeding
+        def show_tracks_and_confirm():
+            preview_win = tk.Toplevel(root)
+            preview_win.title(_("Preview Imported Tracks"))
+            preview_win.geometry("500x450")
+            preview_win.resizable(False, False)
+            # Set window icon if available
+            try:
+                if os.name == 'nt':
+                    preview_win.iconbitmap(bundle_path("icon.ico"))
+            except Exception:
+                pass
+            # Center the window relative to the root window
+            preview_win.update_idletasks()
+            root.update_idletasks()
+            x = root.winfo_x() + (root.winfo_width() - preview_win.winfo_width()) // 2
+            y = root.winfo_y() + (root.winfo_height() - preview_win.winfo_height()) // 2
+            preview_win.geometry(f"+{x}+{y}")
+
+            # If image_b64 is present, display image on the left, label_text on the right
+            if data["metadata"].get("image_b64"):
+                try:
+                    img_bytes = base64.b64decode(data["metadata"]["image_b64"])
+                    img = Image.open(BytesIO(img_bytes))
+                    img = img.resize((100, 100))
+                    img_tk = ImageTk.PhotoImage(img)
+                except Exception:
+                    img_tk = None
+                frame = ttk.Frame(preview_win)
+                frame.pack(pady=(10, 5))
+                if img_tk:
+                    img_label = ttk.Label(frame, image=img_tk)
+                    img_label.image = img_tk
+                    img_label.pack(side="left", padx=(0, 10))
+                label_text = f"{original_name}\n"
+                label_text += f"{_('Tracks')}: {len(tracks)}\n"
+                label_text += f"\n{_('Exported at')}: {exported_at}"
+                label = ttk.Label(frame, text=label_text,
+                                 font=("Arial", 11, "bold"), justify="left")
+                label.pack(side="left", anchor="n")
+            else:
+                label_text = f"{original_name}\n"
+                label_text += f"{_('Tracks')}: {len(tracks)}\n"
+                label_text += f"\n{_('Exported at')}: {exported_at}"
+                ttk.Label(preview_win, text=label_text, font=("Arial", 11, "bold")).pack(pady=(10, 5))
+
+            # Frame for listbox and scrollbar
+            listbox_frame = ttk.Frame(preview_win)
+            listbox_frame.pack(padx=10, pady=5, fill="both", expand=True)
+
+            # Listbox for track names
+            listbox = tk.Listbox(listbox_frame, width=65, height=15)
+            listbox.pack(side="left", fill="both", expand=True)
+
+            # Scrollbar for the listbox
+            scrollbar = ttk.Scrollbar(listbox_frame, orient="vertical", command=listbox.yview)
+            scrollbar.pack(side="right", fill="y")
+            listbox.config(yscrollcommand=scrollbar.set)
+
+            for idx, track in enumerate(tracks, 1):
+                name = track.get("name", "Unknown")
+                artists = ", ".join(track.get("artists", []))
+                listbox.insert(tk.END, f"{idx}. {name} - {artists}")
+
+            # Continue button
+            def proceed():
+                preview_win.destroy()
+                ask_for_name_and_import()
+
+            ttk.Button(preview_win, text=_("Continue Import"), command=proceed).pack(pady=10)
+            preview_win.transient(root)
+            preview_win.grab_set()
+            root.wait_window(preview_win)
+
+        # Ask for playlist name and import
+        def ask_for_name_and_import():
+            def on_create():
+                name = name_var.get().strip()
+                if not name:
+                    name_label.config(foreground="red")
+                    return
+                import_win.destroy()
+                # Create playlist and add tracks
+                try:
+                    if not user_id:
+                        uid = sp.me()['id']
+                    else:
+                        uid = user_id
+                    new_playlist = sp.user_playlist_create(user=uid, name=name, public=False, description=f"📥 Imported by Spotify Scheduler v{VER} on {datetime.now()}")
+                    uris = [track['uri'] for track in tracks if 'uri' in track]
+                    # Spotify API: max 100 tracks per request
+                    for i in range(0, len(uris), 100):
+                        sp.playlist_add_items(new_playlist['id'], uris[i:i+100])
+                    # Set playlist image if available in import file
+                    image_b64 = data["metadata"].get("image_b64")
+                    # Check if image_b64 is a valid Base64-encoded JPEG image string and <= 256 KB
+                    if image_b64:
+                        try:
+                            img_bytes = base64.b64decode(image_b64)
+                            if len(img_bytes) <= 256 * 1024:
+                                img = Image.open(BytesIO(img_bytes))
+                                if img.format == "JPEG":
+                                    sp.playlist_upload_cover_image(new_playlist['id'], str(image_b64))
+                                else:
+                                    timestamped_print("Imported image is not a JPEG. Skipping cover upload.")
+                            else:
+                                timestamped_print("Imported image exceeds 256 KB. Skipping cover upload.")
+                        except Exception as e:
+                            timestamped_print(f"Failed to set playlist image: {error(e)}")
+                    timestamped_print(f"Imported {import_file} to new playlist {new_playlist['id']}")
+                    messagebox.showinfo(_("Import Playlist"), _("Playlist imported successfully."))
+                    fetch_user_playlists()
+                except Exception as e:
+                    timestamped_print(f"Failed to import playlist: {error(e)}")
+                    messagebox.showerror(_("Import Playlist"), _("Failed to import playlist: ") + str(e))
+
+            import_win = tk.Toplevel(root)
+            import_win.title(_("Import Playlist"))
+            import_win.geometry("350x150")
+            import_win.resizable(False, False)
+            # Set window icon if available
+            try:
+                if os.name == 'nt':
+                    import_win.iconbitmap(bundle_path("icon.ico"))
+            except Exception:
+                pass
+            # Center the window relative to the root window
+            import_win.update_idletasks()
+            root.update_idletasks()
+            x = root.winfo_x() + (root.winfo_width() - import_win.winfo_width()) // 2
+            y = root.winfo_y() + (root.winfo_height() - import_win.winfo_height()) // 2
+            import_win.geometry(f"+{x}+{y}")
+
+            ttk.Label(import_win, text=_("Playlist name:")).pack(pady=(10, 0))
+            default_name = original_name if original_name else _("Imported Playlist")
+            name_var = tk.StringVar(value=default_name)
+            name_entry = ttk.Entry(import_win, textvariable=name_var, width=40)
+            name_entry.pack(pady=5)
+            name_label = ttk.Label(import_win, text="")
+            name_label.pack()
+            ttk.Button(import_win, text=_("Create Playlist"), command=on_create).pack(pady=10)
+            import_win.transient(root)
+            import_win.grab_set()
+            root.wait_window(import_win)
+
+        show_tracks_and_confirm()
+
+    except Exception as e:
+        timestamped_print(f"Failed to import playlist: {error(e)}")
+        messagebox.showerror(_("Import Playlist"), _("Failed to import playlist: ") + str(e))
+
+
+# Centered container with padding
+container = ttk.Frame(import_export_frame)
+container.pack(expand=True, fill="both", padx=0, pady=0)
+
+# Title label
+title_label = ttk.Label(container, text=_("Import/Export Playlists"), font=("Arial", 16, "bold"))
+title_label.pack(pady=(30, 10))
+
+# Description
+desc_label = ttk.Label(
+    container,
+    text=_("Easily import or export your playlists as JSON files. Exported playlists can be shared or backed up. Imported playlists will be created in your Spotify account."),
+    wraplength=600,
+    font=("Arial", 11)
+)
+desc_label.pack(pady=(0, 20))
+
+# Buttons frame
+btns_frame = ttk.Frame(container)
+btns_frame.pack(pady=10)
+
+import_btn = ttk.Button(btns_frame, text=_("Import Playlist (from file)"), command=import_playlist)
+import_btn.grid(row=0, column=0, padx=15, ipadx=10, ipady=5)
+
+export_btn = ttk.Button(btns_frame, text=_("Export Playlist (to file)"), command=export_playlist)
+export_btn.grid(row=0, column=1, padx=15, ipadx=10, ipady=5)
+
+# Info box
+info_box = ttk.LabelFrame(container, text=_("How it works"), padding=(15, 10))
+info_box.pack(pady=(30, 10), padx=40, fill="x")
+
+info_text = (
+    f"• {_('Export Playlist')}: {_('Select a playlist from your account or paste a playlist link/ID. The playlist will be saved as a JSON file.')}\n"
+    f"• {_('Import Playlist')}: {_('Choose a previously exported JSON file. The playlist will be created in your Spotify account.')}\n"
+    f"• {_('Note')}: {_('Only playlists exported by Spotify Scheduler can be imported.')}"
+)
+info_label = ttk.Label(info_box, text=info_text, wraplength=550, font=("Arial", 10))
+info_label.pack()
+
+# Add some spacing at the bottom
+container.pack_propagate(False)
+container.configure(height=350)
 
 LOG_FILE = open(LOG_FILE, "a", encoding="utf-8")
 
