@@ -1,4 +1,16 @@
 # Changelog
+
+## 1.13.0
+### Added:
+- import/export playlists feature
+- warning when not using Spotify Premium
+
+## Changed
+- using more API scopes (you might need to reauthorize an app after update)
+
+## Removed:
+- metadata and randomqueue support for Spotify curated playlists (due to API changes)
+
 ## 1.12.0
 ### Added:
 - scrollbar in console tab

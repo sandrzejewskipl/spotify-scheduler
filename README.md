@@ -24,6 +24,9 @@ In the Recently played tab, you can see your playback history.
 
 ![Screenshot of Recently played tab that contains your playback history with time, title and authors](img/recently_played.png)
 
+### Import/Export Playlists
+In the Import/Export tab, you can export your playlists as JSON file, then import them using that JSON file. Ideal for backup or sharing. Cover art is also exported.
+
 > [!IMPORTANT]
 > Make sure you got Spotify Premium subscription and are using Spotify's desktop app - not web version!
 

@@ -25,7 +25,7 @@ from platformdirs import PlatformDirs
 from tkinter.messagebox import askyesno
 import random
 
-VER="1.12.0"
+VER="1.13.0"
 CONFIG_FILE="config.json"
 SCHEDULE_FILE="schedule.txt"
 DEFAULT_SCHEDULE_FILE='default-schedule.txt'
