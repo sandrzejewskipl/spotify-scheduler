@@ -122,6 +122,13 @@ translations = {
         "This device": "To urządzenie",
         "Skip explicit tracks": "Pomijaj treści nieprzyzwoite",
         "Web players were detected but are not supported.": "Wykryto odtwarzacze internetowe, ale nie są one obsługiwane.",
+        "A Spotify Premium subscription is required.\nWithout subscription, this application will not function properly, due to Spotify API limitations.": "Wymagana jest subskrypcja Spotify Premium.\nBez subskrypcji ta aplikacja nie będzie działać poprawnie z powodu ograniczeń API Spotify.",
+        "Current product type:": "Aktualny typ produktu:",
+        "Account": "Konto",
+        "This warning will close in 15 seconds.": "To ostrzeżenie zamknie się za 15 sekund.",
+        "Spotify Premium Required": "Wymagane Spotify Premium",
+        "You are not using Spotify Premium!": "Nie korzystasz z Spotify Premium!",
+        "> I understand <": "> Rozumiem <",
 
     },
     

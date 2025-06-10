@@ -1847,6 +1847,62 @@ def main():
         
         root.after(600000, updatechecker_loop)
 
+    # Check for Spotify Premium subscription
+    try:
+        user_profile = sp.me()
+        if user_profile.get("product").lower() != "premium":
+            # Show error and auto-close after 10 seconds
+            error_win = tk.Toplevel(root)
+            error_win.title(_("Spotify Premium Required"))
+            error_win.geometry("450x250")
+            error_win.resizable(False, False)
+            # Center the window relative to the root window
+            error_win.update_idletasks()
+            root.update_idletasks()
+            x = root.winfo_x() + (root.winfo_width() - error_win.winfo_width()) // 2
+            y = root.winfo_y() + (root.winfo_height() - error_win.winfo_height()) // 2
+            error_win.geometry(f"+{x}+{y}")
+            # Set window icon if available
+            try:
+                if os.name == 'nt':
+                    error_win.iconbitmap(bundle_path("icon.ico"))
+            except Exception:
+                pass
+            frame = ttk.Frame(error_win, padding=20)
+            frame.pack(expand=True, fill="both")
+            ttk.Label(
+                frame,
+                text=_("You are not using Spotify Premium!"),
+                wraplength=380,
+                font=("Arial", 12, "bold"),
+                anchor="center",
+                justify="center"
+            ).pack(pady=(0, 10))
+            text=f"{_('A Spotify Premium subscription is required.\nWithout subscription, this application will not function properly, due to Spotify API limitations.')}\n\n{_('Current product type:')} {str(user_profile.get('product')).title()}\n{_("Account")}: {user_profile.get('email')}\n\n{_('This warning will close in 15 seconds.')}"
+            ttk.Label(
+                frame,
+                text=text,
+                wraplength=350,
+                font=("Arial", 10),
+                anchor="center",
+                justify="center"
+            ).pack(pady=(0, 15))
+            ttk.Button(
+                frame,
+                text=_("> I understand <"),
+                command=error_win.destroy
+            ).pack(pady=(0, 5))
+            def close_error_win():
+                if error_win.winfo_exists():
+                    error_win.destroy()
+            error_win.after(15000, close_error_win)
+            error_win.transient(root)
+            error_win.grab_set()
+            error_win.focus_set()
+            timestamped_print("Spotify Premium subscription is required to use this application.")
+    except Exception as e:
+        timestamped_print(f"Failed to check Spotify subscription: {error(e)}")
+
     loop()
     fetch_playlists_loop()
     fetch_played_loop()
