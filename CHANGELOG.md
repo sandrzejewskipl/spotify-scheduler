@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.13.2
+### Fixed:
+- fixed an error "argument of type 'NoneType' is not iterable" during a playlist GUI refresh, when a playlist is not set
+
 ## 1.13.1
 ### Added:
 - hotfix for spotify client not playing random queue; cause: when spotify's api has problems, client doesn't see any tracks in playlist unless manually clicked; fix requires killing and autorunning spotify enabled

@@ -25,7 +25,7 @@ from platformdirs import PlatformDirs
 from tkinter.messagebox import askyesno
 import random
 
-VER="1.13.1"
+VER="1.13.2"
 CONFIG_FILE="config.json"
 SCHEDULE_FILE="schedule.txt"
 DEFAULT_SCHEDULE_FILE='default-schedule.txt'
@@ -1402,7 +1402,7 @@ def update_view_for_time(*args):
     
     randomqueue_var.set(checkifrandomqueue(hour))
     randomqueue_checkbox.config(text=_("Random queue"))
-    if("37i9dQ" in PLAYLIST_ID):
+    if(PLAYLIST_ID and "37i9dQ" in PLAYLIST_ID):
         randomqueue_checkbox.config(state="disabled")
         randomqueue_var.set(False)
         randomqueue_checkbox.config(text=_("Random queue"))
