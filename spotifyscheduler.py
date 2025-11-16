@@ -1405,7 +1405,6 @@ def update_view_for_time(*args):
     if(PLAYLIST_ID and "37i9dQ" in PLAYLIST_ID):
         randomqueue_checkbox.config(state="disabled")
         randomqueue_var.set(False)
-        randomqueue_checkbox.config(text=_("Random queue"))
     elif(schedule_playlists.get(hour) and "playlist" in schedule_playlists.get(hour)):
         randomqueue_checkbox.config(state="enabled")
     else:
