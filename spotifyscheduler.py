@@ -2108,7 +2108,7 @@ def spotify_main():
                     
                 PLAYLIST_ID=get_value_for_schedule(value="playlist")
                 randomqueue=get_value_for_schedule(value="randomqueue")
-                if (not current_playback) or (not current_playback["is_playing"]) or (not last_playlist==PLAYLIST_ID) or (target_device["id"]!=active_device["id"]) or (last_randomqueue!=randomqueue):
+                if (not current_playback) or (not current_playback["is_playing"]) or (not last_playlist==PLAYLIST_ID) or (target_device and target_device["id"]!=active_device["id"]) or (last_randomqueue!=randomqueue):
                     if PLAYLIST_ID:
                         play_music()
                     else:
