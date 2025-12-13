@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.1
+### Changed:
+- user playlists are now being cached to speed up opening "Schedule" tab
+
 ## 2.0.0
 ### Added:
 - new "Schedule" tab with a calendar which allows for setting different schedules for different days
@@ -21,10 +25,10 @@
 - import/export playlists feature
 - warning when not using Spotify Premium
 
-## Changed
+### Changed
 - using more API scopes (you might need to reauthorize an app after update)
 
-## Removed:
+### Removed:
 - metadata and randomqueue support for Spotify curated playlists (due to API changes)
 
 ## 1.12.0

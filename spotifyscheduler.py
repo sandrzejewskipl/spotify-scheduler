@@ -25,7 +25,7 @@ from platformdirs import PlatformDirs
 from tkinter.messagebox import askyesno
 import random
 
-VER="2.0.0"
+VER="2.0.1"
 CONFIG_FILE="config.json"
 NEWSCHEDULE="schedule.json"
 LOG_FILE="output.log"
@@ -153,6 +153,43 @@ class fake_sp:
 
 username=""
 user_id=None
+def fetch_user_playlists():
+    global username, user_id
+    playlists = []
+    offset = 0
+    limit = 50
+    
+    while True:
+        try:
+            response = sp.current_user_playlists(limit=limit, offset=offset)
+            total=response['total']
+            playlists.extend(response['items'])
+            if len(response['items']) < limit:
+                break
+            offset += limit
+        except Exception:
+            break
+
+    for playlist in playlists:
+        playlist_name = playlist['name']
+        playlist_id = playlist['id']
+        _playlist_name_cache[playlist_id] = (playlist_name, t.time())
+
+    try:
+        user = sp.current_user()
+        display_name=""
+        email=""
+        if "display_name" in user:
+            display_name=user['display_name']
+        if "email" in user:
+            email=f"({user['email']})"
+        if "id" in user:
+            user_id=user['id']
+        if display_name or email:
+            username=(f"{_('Logged in as')}: {display_name} {email}")
+    except Exception as e:
+        pass
+
 def initialize_sp():
     global sp, spstatus, last_spotify_run, username, user_id
     sp=None
@@ -164,17 +201,7 @@ def initialize_sp():
             if validate_client_credentials():
                 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=config['CLIENT_ID'],client_secret=config['CLIENT_SECRET'],redirect_uri=REDIRECT_URI,scope=SCOPE, requests_timeout=5), retries=0, requests_timeout=5)
                 spstatus=True
-                user = sp.current_user()
-                display_name=""
-                email=""
-                if "display_name" in user:
-                    display_name=user['display_name']
-                if "email" in user:
-                    email=f"({user['email']})"
-                if "id" in user:
-                    user_id=user['id']
-                if display_name or email:
-                    username=(f"{_('Logged in as')}: {display_name} {email}")
+                fetch_user_playlists()
                 timestamped_print("Spotipy initialized properly.")
                 last_spotify_run=False
             else:
@@ -283,21 +310,6 @@ def fetch_last_played_songs():
     except Exception as e:
         lastplayedvar.set(_("Error fetching recently played songs.", date=datetime.now().strftime("%H:%M:%S")))
         timestamped_print(f"Error fetching recently played songs: {error(e)}")
-
-    try:
-        user = sp.current_user()
-        display_name=""
-        email=""
-        if "display_name" in user:
-            display_name=user['display_name']
-        if "email" in user:
-            email=f"({user['email']})"
-        if "id" in user:
-            user_id=user['id']
-        if display_name or email:
-            username=(f"{_('Logged in as')}: {display_name} {email}")
-    except Exception:
-        pass
 
 
 button_frame = ttk.Frame(last_played_frame)
@@ -2615,8 +2627,6 @@ def main():
     set_up()
     refresh_settings()
     initialize_sp()
-    initialize_new_schedule()
-    refresh_schedule_display()
         
     if os.name == 'nt':
         root.iconbitmap(bundle_path("icon.ico"))
@@ -2628,6 +2638,13 @@ def main():
             timestamped_print(f"Exception during looping Spotify main function. {error(e)}")
             pause_music()
         root.after(2500, loop)  # Loop
+
+    def fetch_playlists_loop():
+        fetch_user_playlists()
+        root.after(240000, fetch_playlists_loop)
+
+    initialize_new_schedule()
+    refresh_schedule_display()
 
     def fetch_played_loop():
         fetch_last_played_songs()
