@@ -25,10 +25,9 @@ from platformdirs import PlatformDirs
 from tkinter.messagebox import askyesno
 import random
 
-VER="1.13.2"
+VER="2.0.0"
 CONFIG_FILE="config.json"
-SCHEDULE_FILE="schedule.txt"
-DEFAULT_SCHEDULE_FILE='default-schedule.txt'
+NEWSCHEDULE="schedule.json"
 LOG_FILE="output.log"
 SCHEDULE_PLAYLISTS_FILE = "schedule_playlists.json"
 DATA_DIRECTORY = PlatformDirs(appname="spotify-scheduler", appauthor=False, ensure_exists=True).user_data_dir
@@ -57,26 +56,7 @@ except Exception:
 
 os.chdir(DATA_DIRECTORY)
 
-# Check if schedule playlists file exists and contains "randomqueue". Fix for upgrading to v1.11.0 and later
-if os.path.exists(SCHEDULE_PLAYLISTS_FILE):
-    try:
-        with open(SCHEDULE_PLAYLISTS_FILE, "r") as file:
-            data = json.load(file)
-            if not any("randomqueue" in entry for entry in data.values()):
-                with open(SCHEDULE_PLAYLISTS_FILE, "w") as file:
-                    json.dump({}, file, indent=4)
-    except Exception:
-        pass
-
 def bundle_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
-    # try:
-    #     # PyInstaller creates a temp folder and stores path in _MEIPASS
-    #     base_path = sys._MEIPASS
-    # except Exception:
-    #     base_path = os.path.abspath("..")
-
-    # return os.path.join(base_path, relative_path)
     return os.path.join(os.path.dirname(__file__), relative_path)
 
 def get_default_language():
@@ -171,9 +151,10 @@ class fake_sp:
     def __getattr__(self, name):
         return self
 
-
+username=""
+user_id=None
 def initialize_sp():
-    global sp, spstatus, last_spotify_run
+    global sp, spstatus, last_spotify_run, username, user_id
     sp=None
     REDIRECT_URI = "http://127.0.0.1:23918"
     SCOPE = "user-modify-playback-state user-read-playback-state playlist-modify-public playlist-modify-private playlist-read-private playlist-read-collaborative user-read-playback-position user-top-read user-read-recently-played user-read-email ugc-image-upload user-read-currently-playing app-remote-control streaming user-library-read user-library-modify user-follow-read user-follow-modify user-read-private"
@@ -183,7 +164,17 @@ def initialize_sp():
             if validate_client_credentials():
                 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=config['CLIENT_ID'],client_secret=config['CLIENT_SECRET'],redirect_uri=REDIRECT_URI,scope=SCOPE, requests_timeout=5), retries=0, requests_timeout=5)
                 spstatus=True
-                fetch_user_playlists()
+                user = sp.current_user()
+                display_name=""
+                email=""
+                if "display_name" in user:
+                    display_name=user['display_name']
+                if "email" in user:
+                    email=f"({user['email']})"
+                if "id" in user:
+                    user_id=user['id']
+                if display_name or email:
+                    username=(f"{_('Logged in as')}: {display_name} {email}")
                 timestamped_print("Spotipy initialized properly.")
                 last_spotify_run=False
             else:
@@ -228,17 +219,11 @@ def save_settings():
         string=_("Couldn't save. Credentials are not valid.")
         settingsstatus_text.set(string)
 
-
-
-    
-
-
 # Creating a GUI window
 root = tk.Tk()
 root.title(f"Spotify Scheduler v{VER}")
-root.geometry("800x600")
+root.geometry("1000x600")
 root.resizable(False, False) 
-
 
 # Adding bookmarks
 notebook = ttk.Notebook(root)
@@ -247,15 +232,11 @@ notebook.pack(fill="both", expand=True)
 now_playing_frame = ttk.Frame(notebook)
 notebook.add(now_playing_frame, text=_("Now Playing"))
 
-schedule_frame = ttk.Frame(notebook)
-notebook.add(schedule_frame, text=_("Schedule"))
-
-playlist_frame = ttk.Frame(notebook)
-notebook.add(playlist_frame, text=_("Playlist"))
+schedulecombo_frame = ttk.Frame(notebook)
+notebook.add(schedulecombo_frame, text=_("Schedule"))
 
 last_played_frame = ttk.Frame(notebook)
 notebook.add(last_played_frame, text=_("Recently Played"))
-
 
 frame_with_padding = ttk.Frame(last_played_frame)
 frame_with_padding.grid(row=0, column=0, padx=10, pady=5, sticky="nsew")
@@ -280,6 +261,7 @@ frame_with_padding.grid_rowconfigure(0, weight=1)
 frame_with_padding.grid_columnconfigure(0, weight=1)
 
 def fetch_last_played_songs():
+    global username, user_id
     try:
         results = sp.current_user_recently_played(limit=50)
         last_played_table.delete(*last_played_table.get_children())
@@ -301,6 +283,21 @@ def fetch_last_played_songs():
     except Exception as e:
         lastplayedvar.set(_("Error fetching recently played songs.", date=datetime.now().strftime("%H:%M:%S")))
         timestamped_print(f"Error fetching recently played songs: {error(e)}")
+
+    try:
+        user = sp.current_user()
+        display_name=""
+        email=""
+        if "display_name" in user:
+            display_name=user['display_name']
+        if "email" in user:
+            email=f"({user['email']})"
+        if "id" in user:
+            user_id=user['id']
+        if display_name or email:
+            username=(f"{_('Logged in as')}: {display_name} {email}")
+    except Exception:
+        pass
 
 
 button_frame = ttk.Frame(last_played_frame)
@@ -630,10 +627,7 @@ def import_playlist():
                 import_win.destroy()
                 # Create playlist and add tracks
                 try:
-                    if not user_id:
-                        uid = sp.me()['id']
-                    else:
-                        uid = user_id
+                    uid = sp.me()['id']
                     new_playlist = sp.user_playlist_create(user=uid, name=name, public=False, description=f"📥 Imported by Spotify Scheduler v{VER} on {datetime.now()}")
                     uris = [track['uri'] for track in tracks if 'uri' in track]
                     # Spotify API: max 100 tracks per request
@@ -657,7 +651,6 @@ def import_playlist():
                             timestamped_print(f"Failed to set playlist image: {error(e)}")
                     timestamped_print(f"Imported {import_file} to new playlist {new_playlist['id']}")
                     messagebox.showinfo(_("Import Playlist"), _("Playlist imported successfully."))
-                    fetch_user_playlists()
                 except Exception as e:
                     timestamped_print(f"Failed to import playlist: {error(e)}")
                     messagebox.showerror(_("Import Playlist"), _("Failed to import playlist: ") + str(e))
@@ -803,14 +796,19 @@ info_text.insert("insert", f"Szymon Andrzejewski\n", "link1")
 info_text.insert("insert", f"{_('GitHub')}: ")
 info_text.insert("insert", "https://github.com/sandrzejewskipl/Spotify-Scheduler\n", "link2")
 
+info_text.insert("insert", f"{_('Donation')}: ")
+info_text.insert("insert", "https://szymonandrzejewski.pl/donate/paypal\n", "link3")
+
 info_text.insert("insert", f"\n{_('github_star')}\n\nMIT License - © 2025 Szymon Andrzejewski")
 
 info_text.tag_config("header", font=("Arial", 14, "bold"), justify="center")
 info_text.tag_config("link1", foreground="#1DB954", underline=True)
 info_text.tag_config("link2", foreground="#1DB954", underline=True)
+info_text.tag_config("link3", foreground="#1DB954", underline=True)
 
 info_text.tag_bind("link1", "<Button-1>", lambda e: open_link("https://szymonandrzejewski.pl"))
 info_text.tag_bind("link2", "<Button-1>", lambda e: open_link("https://github.com/sandrzejewskipl/Spotify-Scheduler"))
+info_text.tag_bind("link3", "<Button-1>", lambda e: open_link("https://szymonandrzejewski.pl/donate/paypal"))
 
 info_text.config(state="disabled")
 
@@ -892,9 +890,124 @@ def set_device_name():
     setting_entries['DEVICE_NAME'].insert(0, platform.node())
     on_settings_change()
 
-if hasattr(platform, "node"):
-    set_device_btn = ttk.Button(settings_frame, text=_("This device"), command=set_device_name)
-    set_device_btn.grid(row=3, column=2, padx=5, pady=5)
+def choose_device_name():
+    """Open a window to choose device name from Spotify devices"""
+    try:
+        # Fetch devices from Spotify
+        devices_data = cached_spotify_data("devices")
+        devices = []
+        
+        if devices_data and "devices" in devices_data:
+            devices = devices_data["devices"]
+        
+        for device in devices:
+            if "web player" in device.get("name", "").lower():
+                devices.remove(devices)
+
+        if not devices:
+            messagebox.showwarning(_("Choose device"), _("No devices found. Please make sure Spotify is running on at least one device."))
+            return
+        
+        # Create window
+        device_select_win = tk.Toplevel(root)
+        device_select_win.title(_("Choose device"))
+        device_select_win.geometry("500x400")
+        device_select_win.resizable(False, False)
+        
+        # Set window icon if available
+        try:
+            if os.name == 'nt':
+                device_select_win.iconbitmap(bundle_path("icon.ico"))
+        except Exception:
+            pass
+        
+        # Center the window relative to the root window
+        device_select_win.update_idletasks()
+        root.update_idletasks()
+        x = root.winfo_x() + (root.winfo_width() - device_select_win.winfo_width()) // 2
+        y = root.winfo_y() + (root.winfo_height() - device_select_win.winfo_height()) // 2
+        device_select_win.geometry(f"+{x}+{y}")
+        
+        ttk.Label(device_select_win, text=_("Select a device:")).pack(pady=10)
+        
+        # Frame for listbox and scrollbar
+        listbox_frame = ttk.Frame(device_select_win)
+        listbox_frame.pack(pady=5, padx=10, fill="both", expand=True)
+        
+        # Listbox with custom font
+        custom_font = font.Font(family="Arial", size=10)
+        device_listbox = tk.Listbox(
+            listbox_frame,
+            width=50,
+            height=12,
+            font=custom_font,
+            selectbackground="#8BEBAD",
+            selectforeground="black",
+            activestyle="none",
+            relief="flat",
+            borderwidth=2,
+            highlightthickness=1,
+        )
+        
+        device_name_map = {}
+        listbox_idx = 0
+        
+        # Populate listbox with devices
+        for device in devices:
+            device_name = device.get("name", "Unknown Device")
+            is_active = f" {_("(Active)")}" if device.get("is_active") else ""
+            display = f"{device_name}{is_active}"
+            device_listbox.insert(tk.END, display)
+            device_name_map[listbox_idx] = device_name
+            
+            # Alternate row colors
+            if listbox_idx % 2 == 0:
+                device_listbox.itemconfig(listbox_idx, background="#e6e6e6")
+            
+            listbox_idx += 1
+        
+        # Add scrollbar
+        scrollbar = ttk.Scrollbar(listbox_frame, orient="vertical", command=device_listbox.yview)
+        device_listbox.config(yscrollcommand=scrollbar.set)
+        device_listbox.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        def on_select():
+            selection = device_listbox.curselection()
+            if selection:
+                idx = selection[0]
+                selected_device_name = device_name_map[idx]
+                setting_entries['DEVICE_NAME'].delete(0, tk.END)
+                setting_entries['DEVICE_NAME'].insert(0, selected_device_name)
+                on_settings_change()
+                device_select_win.destroy()
+                timestamped_print(f"Device selected: {selected_device_name}")
+            else:
+                messagebox.showwarning(_("Choose Device"), _("Please select a device."))
+        
+        def on_listbox_select(event):
+            on_select()
+        
+        # Bind double-click to select
+        device_listbox.bind('<Double-Button-1>', on_listbox_select)
+        
+        # Button frame
+        button_frame = ttk.Frame(device_select_win)
+        button_frame.pack(pady=10)
+        
+        ttk.Button(button_frame, text=_("Select"), command=on_select).pack(side="left", padx=5)
+        ttk.Button(button_frame, text=_("Cancel"), command=device_select_win.destroy).pack(side="left", padx=5)
+        
+        device_select_win.transient(root)
+        device_select_win.grab_set()
+        root.wait_window(device_select_win)
+        
+    except Exception as e:
+        timestamped_print(f"Error opening device selection window: {error(e)}")
+        messagebox.showerror(_("Choose Device"), _("Failed to fetch devices: ") + str(e))
+
+set_device_btn = ttk.Button(settings_frame, text=_("Choose from list"), command=choose_device_name)
+set_device_btn.grid(row=3, column=2, padx=5, pady=5)
 
 # SWITCHES
 setting_vars['KILLSWITCH_ON'] = tk.BooleanVar(value=config.get('KILLSWITCH_ON', False))
@@ -958,131 +1071,22 @@ devices_list.set("")
 devices_label = ttk.Label(settings_frame, textvariable=devices_list, wraplength=500, anchor="w")
 devices_label.grid(row=10, columnspan=2, pady=10, padx=10, sticky='w')
 
-last_loaded_schedule=""
-def load_schedule_to_table(printstatus=True):
-    global last_loaded_schedule
-    try:
-        with open(SCHEDULE_FILE, "r") as file:
-            lines = file.readlines()
-            last_loaded_schedule=lines
-            schedule_table.delete(*schedule_table.get_children())
-            try:
-                default_font = font.nametofont("TkDefaultFont").copy()
-                default_font.configure(weight="bold")
-                schedule_table.tag_configure("blue", foreground="blue", font=default_font)
-            except Exception:
-                pass
-            for line in lines:
-                if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
-                    start_time, end_time = line.strip().split("-")
-                    start_time_formatted = datetime.strptime(start_time, "%H:%M:%S" if ":" in start_time and start_time.count(":") == 2 else "%H:%M").time()
-                    end_time_formatted = datetime.strptime(end_time, "%H:%M:%S" if ":" in end_time and end_time.count(":") == 2 else "%H:%M").time()
-                    if start_time_formatted > end_time_formatted:
-                        schedule_table.insert("", "end", values=(start_time, end_time), tags=("blue",))
-                    else:
-                        schedule_table.insert("", "end", values=(start_time, end_time))
-        if printstatus:
-            schedulevar.set(_("Schedule has been reloaded."))
-        refresh_playlist_gui()
-    except FileNotFoundError:
-        timestamped_print(f"Schedule file does not exist, it will be created now from default.")
-        replace_schedule_with_default()
-    except Exception as e:
-        timestamped_print(f"Error during loading schedule: {error(e)}")
-def save_default_schedule():
-    try:
-        shutil.copy(SCHEDULE_FILE, DEFAULT_SCHEDULE_FILE)
-        load_schedule_to_table()
-        schedulevar.set(_("Default schedule has been saved."))
-        timestamped_print("Schedule loaded into table.")
-    except Exception as e:
-        timestamped_print(f"Error during saving schedule: {error(e)}")
-        
-def replace_schedule_with_default():
-    try:
-        shutil.copy(DEFAULT_SCHEDULE_FILE, SCHEDULE_FILE)
-        timestamped_print("Setting schedule to default.")
-        load_schedule_to_table()
-        generate_schedule_playlists()
-        refresh_playlist_gui()
-        schedulevar.set(_("Default schedule has been loaded."))
-
-    except Exception as e:
-        timestamped_print(f"Error while changing schedule: {error(e)}")
-
-# Create default schedule
-def generate_default(force=True):
-    global DEFAULT_SCHEDULE_FILE, default_schedule
-    if (not os.path.exists(DEFAULT_SCHEDULE_FILE)) or force==True:
-        with open(DEFAULT_SCHEDULE_FILE, "w") as file:
-            default_schedule = """8:45-8:55
-9:40-9:45
-10:30-10:45
-11:30-11:35
-12:20-12:25
-13:10-13:25
-14:10-14:15"""
-            file.write(default_schedule)
-        if force:
-            timestamped_print("Regenerated default schedule")
-            
-generate_default(False)
-
-def save_schedule_from_table():
-    try:
-        # Get all entries from table
-        rows = []
-        for row in schedule_table.get_children():
-            start_time, end_time = schedule_table.item(row, "values")
-            rows.append((start_time, end_time))
-
-        # Sort entries by start time
-        rows.sort(key=lambda x: datetime.strptime(x[0], "%H:%M:%S" if ":" in x[0] and x[0].count(":") == 2 else "%H:%M"))
-
-        # Save sorted entries to file
-        with open(SCHEDULE_FILE, "w") as file:
-            for start_time, end_time in rows:
-                file.write(f"{start_time}-{end_time}\n")
-
-        timestamped_print("Schedule has been saved.")
-        load_schedule_to_table()
-        refresh_playlist_gui()
-    except Exception as e:
-        timestamped_print(f"Error during saving schedule: {error(e)}")
-def generate_schedule_playlists():
-    try:
-        new_data={}
-        if os.path.exists(SCHEDULE_PLAYLISTS_FILE):
-            with open(SCHEDULE_PLAYLISTS_FILE, "r+") as json_file:
-                data = json.load(json_file)
-                if "default" in data:
-                    new_data={"default": data["default"]}
-                json_file.seek(0)
-                json_file.truncate()
-                json.dump(new_data, json_file, indent=4)
-        else:
-            with open(SCHEDULE_PLAYLISTS_FILE, "w") as json_file:
-                json.dump(new_data, json_file, indent=4)
-    except Exception as e:
-        timestamped_print(f"Error during saving playlists file: {error(e)}")
-def get_value_for_schedule(key=None,value="playlist"): #value should be playlist or randomqueue
-    global last_schedule, SCHEDULE_PLAYLISTS_FILE
-    if key==None:
-        key=is_within_schedule()
-    if key:
+def get_value_for_schedule(day=None,hour=None,value="playlist"): #value should be playlist or randomqueue
+    global last_schedule
+    if hour==None:
+        day=datetime.now().strftime("%Y-%m-%d")
+        hour=is_within_schedule()
+    if hour:
         try:
-            with open(SCHEDULE_PLAYLISTS_FILE, "r") as file:
+            with open(NEWSCHEDULE, "r") as file:
                 data = json.load(file)
-                key = key.strip()
-                if key in data and value in data[key]:
-                    return data[key][value]
-
-                elif "default" in data and value in data["default"]:
-                    return data["default"][value]
+                hour = hour.strip()
+                if day in data and hour in data[day] and value in data[day][hour]:
+                    return data[day][hour][value]
                 else:
                     return None
         except FileNotFoundError:
-            generate_schedule_playlists()
+            initialize_new_schedule()
         except Exception as e:
             timestamped_print(f"Error during loading playlists file: {error(e)}")
     return False
@@ -1091,121 +1095,912 @@ def is_valid_time_format(time_str):
     time_pattern = r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$"  # Hours: 00-23, Minutes: 00-59
     return re.match(time_pattern, time_str) is not None
 
-def add_entry(event=None):
-    start_time = (start_time_entry.get()).replace(';',':')
-    end_time = (end_time_entry.get()).replace(';',':')
+def initialize_new_schedule():
+    """Initialize new schedule file if it doesn't exist"""
+    if not os.path.exists(NEWSCHEDULE):
+        with open(NEWSCHEDULE, "w") as f:
+            json.dump({}, f, indent=4)
+        timestamped_print("Initialized new schedule file.")
+        refresh_schedule_display()
 
-    if not is_valid_time_format(start_time):
-        schedulevar.set(_("Error: Incorrect time format."))
-        timestamped_print(f"Incorrect time format: {start_time}. Use HH:MM or HH:MM:SS.")
-        return
+selected_date = tk.StringVar()
+selected_date.set(datetime.now().strftime("%Y-%m-%d"))
 
-    if not is_valid_time_format(end_time):
-        schedulevar.set(_("Error: Incorrect time format."))
-        timestamped_print(f"Incorrect time format: {end_time}. Use HH:MM or HH:MM:SS.")
-        return
+# Main container for calendar and schedule table (side by side)
+main_content_frame = ttk.Frame(schedulecombo_frame)
+main_content_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-    start_dt = datetime.strptime(start_time, "%H:%M:%S" if ":" in start_time and start_time.count(":") == 2 else "%H:%M")
-    end_dt = datetime.strptime(end_time, "%H:%M:%S" if ":" in end_time and end_time.count(":") == 2 else "%H:%M")
+calendar_left = ttk.Frame(main_content_frame)
+calendar_left.pack(side="left", anchor="n", padx=(0,10))
 
-    if start_dt==end_dt:
-        schedulevar.set(_("Error: Start and end time cannot be the same."))
-        timestamped_print("Start and end time cannot be the same.")
-        return
+def on_date_selected():
+    date_obj = calendar.selection_get()
+    date_string = date_obj.strftime("%Y-%m-%d")
+    selected_date.set(date_string)
+    refresh_schedule_display()
+
+class CustomCalendar(ttk.Frame):
+    def __init__(self, parent, year, month, day, on_select_callback=None):
+        super().__init__(parent)
+        self.on_select_callback = on_select_callback
+        today = datetime.now().date()
+        self.selected_date = today
+        self.selected_day = today.day
+        self.year = today.year
+        self.month = today.month
+        
+        self.day_buttons = []
+        self.create_widgets()
+        self.update_calendar()
     
-    # if end_dt <= start_dt:
-    #     schedulevar.set(_("Error: End time must be later than start time."))
-    #     timestamped_print("Error: End time must be later than start time.")
-    #     return
+    def create_widgets(self):
+        # Header with month/year and navigation
+        header = ttk.Frame(self)
+        header.pack(fill="x", padx=5, pady=5)
+        
+        ttk.Button(header, text="◀", width=3, command=self.prev_month).pack(side="left", padx=2)
+        self.month_label = ttk.Label(header, text="", font=("Arial", 12, "bold"))
+        self.month_label.pack(side="left", expand=True)
+        ttk.Button(header, text="▶", width=3, command=self.next_month).pack(side="right", padx=2)
+        
+        # Calendar grid (includes day names header and days)
+        self.calendar_frame = ttk.Frame(self)
+        self.calendar_frame.pack(fill="both", expand=True, padx=2, pady=2)
+        
+        days_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        days_pl = ["Pon", "Wto", "Śro", "Czw", "Pią", "Sob", "Nie"]
 
-    if start_time and end_time:
-        schedule_table.insert("", "end", values=(start_time, end_time))
-        start_time_entry.delete(0, tk.END)
-        end_time_entry.delete(0, tk.END)
-        schedulevar.set(f"{_('Added to schedule:')}: {start_time} - {end_time}")
-        timestamped_print(f"Added to schedule: {start_time} - {end_time}")
-        save_schedule_from_table() 
-    else:
-        schedulevar.set(_("Error: Cannot add an empty entry."))
-        timestamped_print("Cannot add an empty entry.")
+        days = days_pl if get_default_language() == "pl" else days_en
+
+        for col, day_name in enumerate(days):
+            ttk.Label(
+                self.calendar_frame,
+                text=day_name,
+                font=("Arial", 9, "bold"),
+                width=4,
+                anchor="center"
+            ).grid(row=0, column=col, padx=1, pady=1, sticky="nsew")
+            self.calendar_frame.columnconfigure(col, weight=1)
+
+    
+    def update_calendar(self):
+        for widget in self.calendar_frame.winfo_children():
+            info = widget.grid_info()
+            if info.get('row', 0) > 0:
+                widget.destroy()
+        self.day_buttons = []
+        
+        self.month_label.config(text=f"{datetime(self.year, self.month, 1).strftime('%B %Y')}")
+        
+        first_day = datetime(self.year, self.month, 1)
+        num_days = (datetime(self.year, self.month, 1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        num_days = num_days.day
+        
+        start_weekday = first_day.weekday()
+        
+        today = datetime.now().date()
+        day_counter = start_weekday
+        
+        for day in range(1, num_days + 1):
+            row = (day_counter // 7) + 1  # +1 to account for header row
+            col = day_counter % 7
+            
+            current_date = datetime(self.year, self.month, day).date()
+            btn = tk.Button(
+                self.calendar_frame,
+                text=str(day),
+                width=3,
+                font=("Arial", 10),
+                relief="raised",
+                bd=1,
+                bg="#FFFFFF" if current_date != today else "#BBDEFB",
+                fg="#333333" if current_date != today else "#000000",
+                activebackground="#bbdefb"
+            )
+            
+            if current_date == self.selected_date:
+                btn.config(bg="#4CAF50", fg="#FFFFFF")
+         
+            btn.grid(row=row, column=col, padx=1, pady=2)
+            btn.config(command=lambda d=day: self.select_day(d))
+            self.day_buttons.append((day, btn))
+            day_counter += 1
+        
+        for i in range(start_weekday):
+            row = (i // 7) + 1 
+            col = i % 7
+            ttk.Label(self.calendar_frame, text="", width=3).grid(row=row, column=col, padx=1, pady=2)
+
+        # Color days with schedule entries
+        try:
+            with open(NEWSCHEDULE, "r") as f:
+                schedule_data = json.load(f)
+            
+            for day, button in self.day_buttons:
+                date_str = f"{self.year:04d}-{self.month:02d}-{day:02d}"
+                today_str = datetime.now().strftime("%Y-%m-%d")
+                
+                if date_str in schedule_data and any(schedule_data[date_str].values()):
+                    if self.selected_date and date_str == self.selected_date.strftime("%Y-%m-%d"):
+                        continue  # skip selected day
+                    if date_str == today_str:
+                        continue  # skip today
+                    button.config(bg="#FFECB3", fg="#333333")  # day with schedule
+
+        except Exception:
+            pass
+
+    def select_day(self, day):
+        self.selected_day = day
+        self.selected_date = datetime(self.year, self.month, day).date()
+        self.update_calendar()
+        if self.on_select_callback:
+            self.on_select_callback()
+    
+    def prev_month(self):
+        if self.month == 1:
+            self.month = 12
+            self.year -= 1
+        else:
+            self.month -= 1
+        self.update_calendar()
+    
+    def next_month(self):
+        if self.month == 12:
+            self.month = 1
+            self.year += 1
+        else:
+            self.month += 1
+        self.update_calendar()
+    
+    def selection_get(self):
+        return self.selected_date if self.selected_date else datetime(self.year, self.month, self.selected_day).date()
+
+calendar = CustomCalendar(calendar_left, datetime.now().year, datetime.now().month, datetime.now().day, on_select_callback=on_date_selected)
+calendar.pack(fill="x")
+
+# Copy button frame
+copy_button_frame = ttk.Frame(calendar_left)
+copy_button_frame.pack(fill="x", pady=5)
+
+inner = ttk.Frame(copy_button_frame)
+inner.pack(anchor="center")
+
+def copy_schedule_dialog_days():
+    try:
+        current_date = calendar.selection_get()
+        date_str = current_date.strftime("%Y-%m-%d")
+        
+        # Load current schedule
+        try:
+            with open(NEWSCHEDULE, "r") as f:
+                schedule_data = json.load(f)
+        except FileNotFoundError:
+            schedule_data = {}
+        
+        # Create dialog
+        copy_dialog = tk.Toplevel(root)
+        copy_dialog.title(_("Copy next X days"))
+        copy_dialog.geometry("300x130")
+        copy_dialog.resizable(False, False)
+        try:
+            if os.name == 'nt':
+                copy_dialog.iconbitmap(bundle_path("icon.ico"))
+        except Exception:
+            pass
+        
+        # Center the window
+        copy_dialog.update_idletasks()
+        root.update_idletasks()
+        x = root.winfo_x() + (root.winfo_width() - copy_dialog.winfo_width()) // 2
+        y = root.winfo_y() + (root.winfo_height() - copy_dialog.winfo_height()) // 2
+        copy_dialog.geometry(f"+{x}+{y}")
+
+        ttk.Label(copy_dialog, text=_("Copy schedule from") + f" {date_str}").pack(pady=(10,0))
+
+        def update_preview(*args):
+            val = days_var.get()
+
+            if not val.strip():
+                preview_label.config(text="")
+                return
+
+            try:
+                days = int(val)
+                if days <= 0:
+                    preview_label.config(text="")
+                    return
+                
+                end_date = current_date + timedelta(days=days)
+                end_str = end_date.strftime("%Y-%m-%d")
+                preview_label.config(text=f"{_('Copying will end on')}: {end_str}")
+            except ValueError:
+                preview_label.config(text="")
+
+        days_var = tk.StringVar(value="")
+        days_var.trace_add("write", update_preview)
+
+        line = ttk.Frame(copy_dialog)
+        line.pack(pady=5)
+
+        def validate_digits(new_value):
+            if new_value == "":
+                return True
+            if not new_value.isdigit():
+                return False
+            val = int(new_value)
+            return 1 <= val <= 999
+
+        vcmd = (copy_dialog.register(validate_digits), "%P")
+
+
+        days_entry = ttk.Entry(
+            line,
+            textvariable=days_var,
+            width=5,
+            validate="key",
+            validatecommand=vcmd
+        )
+        days_entry.pack(side="left", padx=(0, 5))
+
+
+        ttk.Label(line, text=_("days ahead")).pack(side="left")
+
+        preview_label = ttk.Label(copy_dialog, text="", foreground="gray")
+        preview_label.pack(pady=2)
+
+        
+        def do_copy():
+            try:
+                if days_var.get().strip() == "":
+                    preview_label.config(text=f"{_("Please enter a number of days.")}")
+                    return
+                
+                days = int(days_var.get())
+                   
+                # Allow copying even if day doesn't exist or is empty
+                if date_str not in schedule_data:
+                    source_schedule = {}
+                else:
+                    source_schedule = schedule_data[date_str].copy()
+                copied_count = 0
+                
+                # Copy to next X days
+                for i in range(1, days + 1):
+                    target_date = current_date + timedelta(days=i)
+                    target_date_str = target_date.strftime("%Y-%m-%d")
+                    
+                    # Create new entry for target date or overwrite existing
+                    schedule_data[target_date_str] = {}
+                    for start_time, entry_data in source_schedule.items():
+                        schedule_data[target_date_str][start_time] = entry_data.copy()
+                    
+                    copied_count += 1
+                
+                # Save
+                with open(NEWSCHEDULE, "w") as f:
+                    json.dump(schedule_data, f, indent=4)
+                
+                new_schedulecombo_status.set(f"{_("Schedule copied to")} {copied_count} {_("next days")}.")
+                timestamped_print(f"Schedule from {date_str} copied to {copied_count} next days.")
+                copy_dialog.destroy()
+                refresh_schedule_display()
+                calendar.update_calendar()
+                
+            except Exception as e:
+                timestamped_print(f"Error copying schedule: {error(e)}")
+        
+        ttk.Button(copy_dialog, text=_("Copy"), command=do_copy).pack(pady=10)
+        copy_dialog.transient(root)
+        copy_dialog.grab_set()
+        days_entry.focus_set()
+        
+    except Exception as e:
+        new_schedulecombo_status.set(_("Error opening copy dialog."))
+        timestamped_print(f"Error: {error(e)}")
+
+def copy_schedule_dialog_weekdays():
+    try:
+        current_date = calendar.selection_get()
+        date_str = current_date.strftime("%Y-%m-%d")
+        
+        # Load current schedule
+        try:
+            with open(NEWSCHEDULE, "r") as f:
+                schedule_data = json.load(f)
+        except FileNotFoundError:
+            schedule_data = {}
+        
+        copy_dialog = tk.Toplevel(root)
+        copy_dialog.title(_("Copy next X weekdays"))
+        copy_dialog.geometry("300x130")
+        copy_dialog.resizable(False, False)
+        try:
+            if os.name == 'nt':
+                copy_dialog.iconbitmap(bundle_path("icon.ico"))
+        except Exception:
+            pass
+        
+        # Center the window
+        copy_dialog.update_idletasks()
+        root.update_idletasks()
+        x = root.winfo_x() + (root.winfo_width() - copy_dialog.winfo_width()) // 2
+        y = root.winfo_y() + (root.winfo_height() - copy_dialog.winfo_height()) // 2
+        copy_dialog.geometry(f"+{x}+{y}")
+
+        ttk.Label(copy_dialog, text=_("Copy schedule from") + f" {date_str}").pack(pady=(10,0))
+
+        def update_preview(*args):
+            val = days_var.get()
+            if not val.strip():
+                preview_label.config(text="")
+                return
+            try:
+                count = int(val)
+                if count <= 0:
+                    preview_label.config(text="")
+                    return
+                preview_label.config(text=f"")
+            except ValueError:
+                preview_label.config(text="")
+
+        days_var = tk.StringVar(value="")
+        days_var.trace_add("write", update_preview)
+
+        line = ttk.Frame(copy_dialog)
+        line.pack(pady=5)
+
+        def validate_digits(new_value):
+            if new_value == "":
+                return True
+            if not new_value.isdigit():
+                return False
+            val = int(new_value)
+            return 1 <= val <= 999
+
+        vcmd = (copy_dialog.register(validate_digits), "%P")
+
+        days_entry = ttk.Entry(line, textvariable=days_var, width=5, validate="key", validatecommand=vcmd)
+        days_entry.pack(side="left", padx=(0, 5))
+        ttk.Label(line, text=_("weekdays ahead")).pack(side="left")
+
+        preview_label = ttk.Label(copy_dialog, text="", foreground="gray")
+        preview_label.pack(pady=2)
+
+        def do_copy():
+            try:
+                if days_var.get().strip() == "":
+                    preview_label.config(text=f"{_("Please enter a number of weekdays.")}")
+                    return
+                count = int(days_var.get())
+                if date_str not in schedule_data:
+                    source_schedule = {}
+                else:
+                    source_schedule = schedule_data[date_str].copy()
+
+                copied_count = 0
+                weekday_to_copy = current_date.weekday()
+                target_date = current_date
+
+                while copied_count < count:
+                    target_date += timedelta(days=1)
+                    if target_date.weekday() == weekday_to_copy:
+                        target_date_str = target_date.strftime("%Y-%m-%d")
+                        schedule_data[target_date_str] = {}
+                        for start_time, entry_data in source_schedule.items():
+                            schedule_data[target_date_str][start_time] = entry_data.copy()
+                        copied_count += 1
+
+                with open(NEWSCHEDULE, "w") as f:
+                    json.dump(schedule_data, f, indent=4)
+
+                new_schedulecombo_status.set(f"{_("Schedule copied to")} {copied_count} {_("next weekdays")}.")
+                timestamped_print(f"Schedule from {date_str} copied to {copied_count} next weekdays.")
+                copy_dialog.destroy()
+                refresh_schedule_display()
+                calendar.update_calendar()
+            except Exception as e:
+                timestamped_print(f"Error copying schedule: {error(e)}")
+
+        ttk.Button(copy_dialog, text=_("Copy"), command=do_copy).pack(pady=10)
+        copy_dialog.transient(root)
+        copy_dialog.grab_set()
+        days_entry.focus_set()
+
+    except Exception as e:
+        new_schedulecombo_status.set(_("Error opening copy dialog."))
+        timestamped_print(f"Error: {error(e)}")
+
+
+btn_days = tk.Button(
+    inner,
+    text=_("Copy next X days"),
+    command=copy_schedule_dialog_days,
+    width=18,
+    wraplength=130,
+    justify="center",
+    bg="#FCFCFC"
+)
+btn_days.pack(side="left", padx=5)
+
+btn_weekdays = tk.Button(
+    inner,
+    text=_("Copy next X weekdays"),
+    command=copy_schedule_dialog_weekdays,
+    width=18,
+    wraplength=130,
+    justify="center",
+    bg="#FCFCFC"
+)
+btn_weekdays.pack(side="left", padx=5)
+
+
+# Table container on the right with checkboxes
+table_container = ttk.Frame(main_content_frame)
+table_container.pack(side="right", fill="both", expand=True)
+
+
+# Column widths
+COL_START_WIDTH = 8
+COL_END_WIDTH = 8
+COL_RANDOM_WIDTH = 12
+
+header_frame = ttk.Frame(table_container)
+header_frame.pack(fill="x", padx=0, pady=5)
+
+# Start
+ttk.Label(
+    header_frame,
+    text=_("Start"),
+    font=("Arial", 9, "bold"),
+    width=COL_START_WIDTH,
+    anchor="w"
+).pack(side="left", padx=(5,0))
+
+# End
+ttk.Label(
+    header_frame,
+    text=_("End"),
+    font=("Arial", 9, "bold"),
+    width=COL_END_WIDTH,
+    anchor="w"
+).pack(side="left")
+
+# Playlist
+ttk.Label(
+    header_frame,
+    text=_("Playlist"),
+    font=("Arial", 9, "bold"),
+    anchor="w"
+).pack(side="left", padx=(200,0), fill="x", expand=True)
+
+# Random queue
+ttk.Label(
+    header_frame,
+    text=_("Random\nqueue"),
+    font=("Arial", 9, "bold"),
+    width=COL_RANDOM_WIDTH,
+    anchor="center",
+    justify="center"
+).pack(side="left", padx=8)
+
+# Delete column
+ttk.Label(
+    header_frame,
+    text="",
+    width=2,
+    anchor="center"
+).pack(side="left", padx=2)
+
+# Create scrollable frame for entries
+entries_frame = ttk.Frame(table_container)
+entries_frame.pack(fill="both", expand=True, padx=0, pady=5)
+
+# Canvas with scrollbar for entries
+canvas = tk.Canvas(entries_frame, bg="white", highlightthickness=0)
+scrollbar = ttk.Scrollbar(entries_frame, orient="vertical", command=canvas.yview)
+scrollable_frame = tk.Frame(canvas, bg="white")
+
+scrollable_frame.bind(
+    "<Configure>",
+    lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+)
+
+canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+canvas.configure(yscrollcommand=scrollbar.set)
+
+# Update canvas window width when canvas is resized
+def on_canvas_size_change(event):
+    canvas.itemconfig(canvas_window, width=event.width)
+
+canvas.bind("<Configure>", on_canvas_size_change)
+
+# Bind mouse wheel for scrolling
+def _on_mousewheel(event):
+    if scrollable_frame.winfo_reqheight() > canvas.winfo_height():
+        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+canvas.pack(side="left", fill="both", expand=True)
+scrollbar.pack(side="right", fill="y")
+
+# Dictionary to store entry rows with checkbutton variables
+schedule_entry_widgets = {}
+
+# Function to refresh entries display
+def refresh_schedule_display():
+    global schedule_entry_widgets
+    
+    # Clear previous entries
+    for widget_dict in schedule_entry_widgets.values():
+        if 'frame' in widget_dict:
+            widget_dict['frame'].destroy()
+    schedule_entry_widgets = {}
+    
+    try:
+        date_str = selected_date.get()
+        with open(NEWSCHEDULE, "r") as f:
+            schedule_data = json.load(f)
+        
+        if date_str in schedule_data:
+            # Sort entries by start time
+            def parse_time_str(tstr):
+                fmt = "%H:%M:%S" if tstr.count(":") == 2 else "%H:%M"
+                return datetime.strptime(tstr, fmt).time()
+
+            sorted_entries = sorted(
+                schedule_data[date_str].items(),
+                key=lambda x: parse_time_str(x[0].split("-")[0])
+            )
+            
+            for time_range, entry_data in sorted_entries:
+                try:
+                    playlist_id = entry_data.get("playlist", "")
+                    randomqueue = entry_data.get("randomqueue", False)
+                    playlist_name = get_playlist_name_for_display(playlist_id)
+                    
+                    start_time, end_time = time_range.split("-")
+                    
+                    entry_row = ttk.Frame(scrollable_frame)
+                    entry_row.pack(fill="both", expand=True, pady=2, padx=0)
+                    
+                    ttk.Label(entry_row, text=start_time, width=COL_START_WIDTH, anchor="w").pack(side="left", padx=5, fill="x", expand=False)
+                    ttk.Label(entry_row, text=end_time, width=COL_END_WIDTH, anchor="w").pack(side="left", padx=5, fill="x", expand=False)
+                    
+                    def on_edit_entry(tr=time_range, pid=playlist_id, pn=playlist_name):
+                        edit_schedule_entry(tr, pid, pn)
+                    
+                    btn = ttk.Button(entry_row, text=f"{playlist_name[:100]}", command=on_edit_entry)
+                    btn.pack(side="left", padx=5, fill="both", expand=True)
+                    
+                    rq_var = tk.BooleanVar(value=randomqueue)
+                    def on_rq_change(tr=time_range, var=rq_var):
+                        schedule_entry_widgets[tr]['rq_var'] = var
+                        save_new_schedule()
+                    
+                    chk = tk.Checkbutton(entry_row, variable=rq_var, command=on_rq_change, width=2, anchor="center")
+                    if("37i9dQ" in playlist_id):
+                        chk.config(state="disabled")
+                        rq_var.set(False)
+                    chk.pack(side="left", padx=5, fill="none", expand=False)
+                    
+                    def on_delete_entry(tr=time_range):
+                        try:
+                            date_str_del = selected_date.get()
+                            with open(NEWSCHEDULE, "r") as f:
+                                schedule_data = json.load(f)
+                            
+                            if date_str_del in schedule_data and tr in schedule_data[date_str_del]:
+                                del schedule_data[date_str_del][tr]
+                                with open(NEWSCHEDULE, "w") as f:
+                                    json.dump(schedule_data, f, indent=4)
+                                
+                                new_schedulecombo_status.set(_("Entry removed"))
+                                timestamped_print(f"Removed schedule entry for {tr}")
+                                refresh_schedule_display()
+                        except Exception as e:
+                            new_schedulecombo_status.set(_("Error during removing entry"))
+                            timestamped_print(f"Error removing schedule entry: {error(e)}")
+                    
+                    del_btn = ttk.Button(entry_row, text="✕", command=on_delete_entry, width=2)
+                    del_btn.pack(side="left", padx=2)
+                    
+                    schedule_entry_widgets[time_range] = {
+                        'frame': entry_row,
+                        'rq_var': rq_var,
+                        'rq_checkbox': chk,
+                        'playlist_id': playlist_id,
+                        'playlist_name': playlist_name
+                    }
+                except Exception as e:
+                    timestamped_print(f"Error creating entry widget: {error(e)}")
+        
+        new_schedulecombo_status.set("")
+        
+        scrollable_frame.update_idletasks()
+        canvas_height = canvas.winfo_height()
+        frame_height = scrollable_frame.winfo_reqheight()
+        min_height = max(frame_height, canvas_height)
+        canvas.config(scrollregion=(0, 0, scrollable_frame.winfo_width(), min_height))
+    
+    except Exception as e:
+        new_schedulecombo_status.set(_("Error during loading schedule."))
+        timestamped_print(f"Error loading schedule: {error(e)}")
+
+def edit_schedule_entry(time_range, current_playlist, current_playlist_name):
+    try:
+        def on_playlist_select_callback():
+            user_input = edit_playlist_var.get().strip()
+            edit_select_win.destroy()
+            playlist_id = user_input
+            if "open.spotify.com" in user_input:
+                playlist_id = extract_playlist_id(user_input)
+            
+            # Update in JSON
+            date_str = selected_date.get()
+            with open(NEWSCHEDULE, "r") as f:
+                schedule_data = json.load(f)
+            
+            if date_str in schedule_data and time_range in schedule_data[date_str]:
+                schedule_data[date_str][time_range]["playlist"] = playlist_id
+                if "37i9dQ" in playlist_id:
+                    schedule_data[date_str][time_range]["randomqueue"] = False
+                with open(NEWSCHEDULE, "w") as f:
+                    json.dump(schedule_data, f, indent=4)
+                
+                timestamped_print(f"Playlist for {time_range} updated to {playlist_id}.")
+                refresh_schedule_display()
+                save_new_schedule()
+        
+        # Load playlists
+        playlists = []
+        offset = 0
+        limit = 50
+        while True:
+            try:
+                response = sp.current_user_playlists(limit=limit, offset=offset)
+                playlists.extend(response['items'])
+                if len(response['items']) < limit:
+                    break
+                offset += limit
+            except Exception:
+                break
+        
+        # Create window
+        edit_select_win = tk.Toplevel(root)
+        edit_select_win.withdraw()
+        edit_select_win.title(_("Select playlist"))
+        edit_select_win.geometry("600x400")
+        edit_select_win.resizable(False, False)
+        try:
+            if os.name == 'nt':
+                edit_select_win.iconbitmap(bundle_path("icon.ico"))
+        except Exception:
+            pass
+        
+        ttk.Label(edit_select_win, text=_("Choose from your playlists:")).pack(pady=10)
+        
+        edit_playlist_var = tk.StringVar(value=current_playlist)
+        listbox_frame = ttk.Frame(edit_select_win)
+        listbox_frame.pack(pady=5, padx=10, fill="both", expand=True)
+        
+        custom_font = font.Font(family="Arial", size=10)
+        edit_playlist_listbox = tk.Listbox(
+            listbox_frame,
+            width=60,
+            height=12,
+            font=custom_font,
+            selectbackground="#8BEBAD",
+            selectforeground="black",
+            activestyle="none",
+            relief="flat",
+            borderwidth=2,
+            highlightthickness=1,
+        )
+        playlist_id_map = {}
+        
+        for idx, playlist in enumerate(playlists):
+            display = f"{playlist['name']} ({playlist['id']})"
+            edit_playlist_listbox.insert(tk.END, display)
+            playlist_id_map[idx] = playlist['id']
+            if idx % 2 == 0:
+                edit_playlist_listbox.itemconfig(idx, background="#e6e6e6")
+        
+        scrollbar_dialog = ttk.Scrollbar(listbox_frame, orient="vertical", command=edit_playlist_listbox.yview)
+        edit_playlist_listbox.config(yscrollcommand=scrollbar_dialog.set)
+        edit_playlist_listbox.pack(side="left", fill="both", expand=True)
+        scrollbar_dialog.pack(side="right", fill="y")
+        
+        entry_frame = ttk.Frame(edit_select_win)
+        entry_frame.pack(pady=5)
+        ttk.Label(entry_frame, text=_("Or enter playlist URL/ID:")).pack(side="left")
+        entry = ttk.Entry(entry_frame, textvariable=edit_playlist_var, width=35)
+        entry.pack(side="left", padx=5)
+        entry.bind('<Return>', lambda evt: on_playlist_select_callback())
+        
+        def on_listbox_select(evt):
+            selection = edit_playlist_listbox.curselection()
+            if selection:
+                selected_idx = selection[0]
+                if selected_idx in playlist_id_map:
+                    edit_playlist_var.set(playlist_id_map[selected_idx])
+        
+        edit_playlist_listbox.bind('<<ListboxSelect>>', on_listbox_select)
+        
+        ttk.Button(edit_select_win, text=_("Select"), command=on_playlist_select_callback).pack(pady=10)
+        
+        edit_select_win.update_idletasks()
+        root.update_idletasks()
+        x = root.winfo_x() + (root.winfo_width() - edit_select_win.winfo_width()) // 2
+        y = root.winfo_y() + (root.winfo_height() - edit_select_win.winfo_height()) // 2
+        edit_select_win.geometry(f"+{x}+{y}")
+        edit_select_win.deiconify()
+        
+        entry.focus_set()
+        edit_select_win.transient(root)
+        edit_select_win.grab_set()
+        root.wait_window(edit_select_win)
+        
+    except Exception as e:
+        new_schedulecombo_status.set(_("Error during editing entry."))
+        timestamped_print(f"Error editing entry: {error(e)}")
+
+# Input frame
+input_frame = ttk.Frame(table_container)
+input_frame.pack(fill="x", padx=0, pady=5)
+
+ttk.Label(input_frame, text=_("START_LABEL")).pack(side="left")
+new_start_time_entry = ttk.Entry(input_frame, width=10)
+new_start_time_entry.pack(side="left", padx=5)
+
+ttk.Label(input_frame, text=_("END_LABEL")).pack(side="left", padx=(5, 0))
+new_end_time_entry = ttk.Entry(input_frame, width=10)
+new_end_time_entry.pack(side="left", padx=5)
+
+def on_enter(event):
+    add_new_schedule_entry()
+
+# Bind dla obu pól
+new_start_time_entry.bind("<Return>", on_enter)
+new_end_time_entry.bind("<Return>", on_enter)
+
+_playlist_name_cache = {}
+
+def get_playlist_name_for_display(playlist_id):
+    try:
+        if not playlist_id or playlist_id.strip() == "":
+            name=_("--- Click to set playlist ---")
+            return name
+        
+        # check cache
+        if playlist_id in _playlist_name_cache:
+            cached_data, timestamp = _playlist_name_cache[playlist_id]
+            if t.time() - timestamp < 300:
+                return cached_data
+        if "37i9dQ" in playlist_id:
+            name = _("Spotify's playlist")
+        else:
+            playlist = sp.playlist(playlist_id)
+            name = playlist.get("name", "")
+        
+        # cache result
+        _playlist_name_cache[playlist_id] = (name, t.time())
+        
+        return name
+    except Exception as e:
+        name=_("--- Unknown Playlist ---")
+        timestamped_print("Error fetching playlist name: " + error(e))
+        return ""
+
+def add_new_schedule_entry():
+    try:
+        start_time = (new_start_time_entry.get()).replace(';', ':')
+        end_time = (new_end_time_entry.get()).replace(';', ':')
+
+        if not is_valid_time_format(start_time):
+            new_schedulecombo_status.set(_("Error: Incorrect time format."))
+            return
+
+        if not is_valid_time_format(end_time):
+            new_schedulecombo_status.set(_("Error: Incorrect time format."))
+            return
+
+        def parse_time_str(tstr):
+            fmt = "%H:%M:%S" if tstr.count(":") == 2 else "%H:%M"
+            return datetime.strptime(tstr, fmt).time()
+            
+        if parse_time_str(end_time) <= parse_time_str(start_time):
+            new_schedulecombo_status.set(_("Error: End time must be later than start time."))
+            return
+                
+        try:
+            with open(NEWSCHEDULE, "r") as f:
+                schedule_data = json.load(f)
+        except FileNotFoundError:
+            schedule_data = {}
+        
+        date_str = selected_date.get()
+        if date_str not in schedule_data:
+            schedule_data[date_str] = {}
+
+        time_range_key = f"{start_time}-{end_time}"
+        if time_range_key in schedule_data[date_str]:
+            new_schedulecombo_status.set(_("Error: Entry already exists."))
+            return
+
+        schedule_data[date_str][time_range_key] = {
+            "playlist": "",
+            "randomqueue": False
+        }
+
+        def parse_start(time_range):
+            start_str = time_range.split("-")[0]
+            fmt = "%H:%M:%S" if start_str.count(":") == 2 else "%H:%M"
+            return datetime.strptime(start_str, fmt).time()
+
+        schedule_data[date_str] = dict(sorted(schedule_data[date_str].items(), key=lambda x: parse_start(x[0])))
+
+        with open(NEWSCHEDULE, "w") as f:
+            json.dump(schedule_data, f, indent=4)
+        
+        new_start_time_entry.delete(0, tk.END)
+        new_end_time_entry.delete(0, tk.END)
+        new_schedulecombo_status.set(_("Entry added"))
+        timestamped_print(f"Added schedule entry for {date_str}: {time_range_key}")
+        refresh_schedule_display()
+    except Exception as e:
+        new_schedulecombo_status.set(_("Error during adding entry."))
+        timestamped_print(f"Error adding schedule entry: {error(e)}")
+
+def save_new_schedule():
+    try:
+        date_str = selected_date.get()
+        schedule_entries = {}
+
+        for time_range, widget_dict in schedule_entry_widgets.items():
+            rq_var = widget_dict.get('rq_var')
+            playlist_id = widget_dict.get('playlist_id', '')
+            randomqueue = rq_var.get() if rq_var else False
+            
+            schedule_entries[time_range] = {
+                "playlist": playlist_id,
+                "randomqueue": randomqueue
+            }
+
+        def parse_start(time_range):
+            start_str = time_range.split("-")[0]
+            fmt = "%H:%M:%S" if start_str.count(":") == 2 else "%H:%M"
+            return datetime.strptime(start_str, fmt).time()
+
+        sorted_entries = dict(sorted(schedule_entries.items(), key=lambda x: parse_start(x[0])))
+
+        with open(NEWSCHEDULE, "r") as f:
+            schedule_data = json.load(f)
+
+        schedule_data[date_str] = sorted_entries
+
+        with open(NEWSCHEDULE, "w") as f:
+            json.dump(schedule_data, f, indent=4)
+
+        new_schedulecombo_status.set(_("Schedule saved for") + f" {date_str}")
+        timestamped_print(f"Schedule saved for {date_str}: {len(sorted_entries)} entries.")
+        spotify_main()
+    except Exception as e:
+        new_schedulecombo_status.set(_("Error during saving schedule."))
+        timestamped_print(f"Error saving schedule: {error(e)}")
 
 
 
-def delete_selected_entry():
-    selected_item = schedule_table.selection()
-    if selected_item:
-        for item in selected_item:
-            start_time, end_time = schedule_table.item(item, "values")
-            remove_playlist(f"{start_time}-{end_time}")
-            schedule_table.delete(item)
-        schedulevar.set(f"{_('Removed from schedule:')}: {start_time} - {end_time}")
-        timestamped_print("The selected entry has been deleted.")
-        save_schedule_from_table()
-    else:
-        schedulevar.set(_("No entry selected."))
-        timestamped_print("No entries have been marked for deletion.")
 
-def regenerate():
-    generate_default()
-    replace_schedule_with_default()
-    schedulevar.set(_("Default schedule has been restored."))
+add_btn = ttk.Button(input_frame, text=_("Add Entry"), command=add_new_schedule_entry)
+add_btn.pack(side="left", padx=5)
 
-# Schedule table
-columns = ("start", "end")
-schedule_table = ttk.Treeview(schedule_frame, columns=columns, show="headings")
-schedule_table.heading("start", text=_("Start Time"))
-schedule_table.heading("end", text=_("End Time"))
-schedule_table.pack(fill="both", expand=True, padx=10, pady=(10, 0))
+new_schedulecombo_status = tk.StringVar()
+new_schedulecombo_status.set("")
 
-# Entry frame
-entry_frame = ttk.Frame(schedule_frame)
-entry_frame.pack(fill="x", padx=10, pady=5)
-
-start_time_label = ttk.Label(entry_frame, text=_("START_LABEL"))
-start_time_label.pack(side="left")
-start_time_entry = ttk.Entry(entry_frame, width=10)
-start_time_entry.pack(side="left", padx=5)
-start_time_entry.bind('<Return>', add_entry)
-
-end_time_label = ttk.Label(entry_frame, text=_("END_LABEL"))
-end_time_label.pack(side="left", padx=(10,0))
-end_time_entry = ttk.Entry(entry_frame, width=10)
-end_time_entry.pack(side="left", padx=5)
-end_time_entry.bind('<Return>', add_entry)
-
-delete_button = ttk.Button(entry_frame, text=_("Delete Selected"), command=delete_selected_entry)
-delete_button.pack(side="right")
-
-add_button = ttk.Button(entry_frame, text=_("Add Entry"), command=add_entry)
-add_button.pack(side="right", padx=5)
-
-
-
-schedulevar = tk.StringVar()
-schedulevar.set("")
-
-# Checklist label
-schedule_label = ttk.Label(schedule_frame, textvariable=schedulevar, font=("Arial", 10))
-schedule_label.pack(fill="x", padx=10)
-
-# Buttons
-button_frame = ttk.Frame(schedule_frame)
-button_frame.pack(fill="x", padx=5, pady=10)
-
-replace_button = ttk.Button(button_frame, text=_("Load default"), command=replace_schedule_with_default)
-replace_button.pack(side="left", padx=5)
-
-save_button = ttk.Button(button_frame, text=_("Save as default"), command=save_default_schedule)
-save_button.pack(side="left", padx=5)
-
-regenerate_button = ttk.Button(button_frame, text=_("Restore default"), command=regenerate)
-regenerate_button.pack(side="left", padx=5)
-
-load_button = ttk.Button(button_frame, text=_("Reload Schedule"), command=load_schedule_to_table)
-load_button.pack(side="right", padx=5)
-
-
-
+status_label = ttk.Label(schedulecombo_frame, textvariable=new_schedulecombo_status, wraplength=500, anchor="w")
+status_label.pack(fill="x", padx=10, pady=(0,5))
 
 is_paused = False
 
@@ -1296,202 +2091,6 @@ status.set("")
 status_label = ttk.Label(control_frame, textvariable=status, font=("Arial", 10))
 status_label.pack(side="right", padx=10)
 
-
-# Playlist section 
-
-
-
-# Load playlist scheduling
-def load_schedule_playlists():
-    try:
-        with open(SCHEDULE_PLAYLISTS_FILE, "r") as file:
-            return json.load(file)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {"default": {"playlist": "", "randomqueue": False}} 
-    
-# Save playlist scheduling
-def save_schedule_playlists():
-    try:
-        with open(SCHEDULE_PLAYLISTS_FILE, "w") as file:
-            json.dump(schedule_playlists, file, indent=4)
-        timestamped_print("Schedule playlists saved successfully.")
-    except Exception as e:
-        timestamped_print(f"Error saving schedule playlists: {error(e)}")
-
-# Load default scheduled playlists
-schedule_playlists = load_schedule_playlists()
-
-# Read schedule file for playlists
-def playlist_read_schedule_file():
-    try:
-        with open(SCHEDULE_FILE, "r") as file:
-            lines = [line.strip() for line in file.readlines()]
-            # Check each line against the regex
-            valid_lines = [
-                line for line in lines if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line)
-            ]
-            return ["default"] + valid_lines
-    except FileNotFoundError:
-        return ["default"]
-
-schedule = playlist_read_schedule_file()
-selected_time = tk.StringVar()
-
-def refresh_playlist_gui(last=None):
-    try:
-        global schedule, schedule_playlists
-        schedule = playlist_read_schedule_file()
-        schedule_playlists = load_schedule_playlists()
-
-        schedule_with_ids = []
-        for hour in schedule:
-            playlist_id = get_playlist_gui_string(hour)
-            if playlist_id==_("same as default"):
-                schedule_with_ids.append(f"{hour} ({_("same as default")})")
-            else:
-                randomqueue_status = f"" 
-                if checkifrandomqueue(hour) and "37i9dQ" not in playlist_id:
-                    randomqueue_status = f", {_('Random queue')}" 
-                schedule_with_ids.append(f"{hour} ({_('Playlist')}: {playlist_id}{randomqueue_status})")
-        time_dropdown['values'] = schedule_with_ids
-        if schedule_with_ids:
-            if last:
-                matching_item = next((item for item in schedule_with_ids if item.startswith(last + " ")), None)
-                if matching_item:
-                    selected_time.set(matching_item)
-                else:
-                    selected_time.set(schedule_with_ids[0])
-            else:
-                selected_time.set(schedule_with_ids[0])
-
-        update_view_for_time()
-    except Exception as e:
-        timestamped_print(f"Failed to refresh playlist gui: {error(e)}")
-
-
-def get_playlist_gui_string(hour):
-    default_text={"playlist": _("same as default"), "randomqueue": False}
-
-    if hour=="default":
-        default_text={"playlist": _("No ID set"), "randomqueue": False}
-
-    if schedule_playlists.get(hour) and not "playlist" in schedule_playlists.get(hour):
-        return _("same as default")
-    else:
-        if schedule_playlists.get(hour, default_text)["playlist"]:
-            return schedule_playlists.get(hour, default_text)["playlist"]
-        else:
-            if hour=="default":
-                return _("No ID set")
-            return ("same as default")
-
-def checkifrandomqueue(key):
-    if not (schedule_playlists.get(key) and "playlist" in schedule_playlists.get(key)):
-        key="default"
-    if schedule_playlists.get(key) and "randomqueue" in schedule_playlists.get(key):
-        return schedule_playlists.get(key)["randomqueue"]
-    else:
-        return False
-
-# Function to update the view based on the selected time
-def update_view_for_time(*args):
-    current_time = selected_time.get()
-
-    hour = current_time.split("(")[0].rstrip(" ")
-    PLAYLIST_ID = get_value_for_schedule(key=hour,value="playlist")
-    
-    randomqueue_var.set(checkifrandomqueue(hour))
-    randomqueue_checkbox.config(text=_("Random queue"))
-    if(PLAYLIST_ID and "37i9dQ" in PLAYLIST_ID):
-        randomqueue_checkbox.config(state="disabled")
-        randomqueue_var.set(False)
-    elif(schedule_playlists.get(hour) and "playlist" in schedule_playlists.get(hour)):
-        randomqueue_checkbox.config(state="enabled")
-    else:
-        randomqueue_checkbox.config(state="disabled")
-
-    display_playlist_info(PLAYLIST_ID)
-
-
-playlist_info = {
-    "name": "",
-    "owner": "",
-    "image_url": ""
-}
-# Change playlist to selected time
-def change_playlist():
-    global playlist_info
-    user_input = playlist_entry.get().strip()
-    if user_input != "":
-        current_time = selected_time.get().split("(")[0].rstrip(" ") 
-
-        playlist_entry.delete(0, tk.END)
-        playlist_table.selection_remove(playlist_table.selection())
-        PLAYLIST_ID = extract_playlist_id(user_input) if "open.spotify.com" in user_input else user_input
-
-        if not PLAYLIST_ID:
-            timestamped_print("Failed to extract playlist ID.")
-            return
-        playlist_info = {
-            "name": _("The playlist has been changed but its data could not be retrieved."),
-            "image_url": ""
-        }
-        schedule_playlists.setdefault(current_time, {})
-        schedule_playlists[current_time]["playlist"] = PLAYLIST_ID
-        if not "randomqueue" in schedule_playlists[current_time]:
-            schedule_playlists[current_time]["randomqueue"] = False
-        save_schedule_playlists()
-        playliststatus_text.set(_(""))
-        timestamped_print(f"Playlist for {current_time} updated to {PLAYLIST_ID}.")
-        refresh_playlist_gui(current_time)
-        spotify_main()
-    else:
-        playliststatus_text.set(_("Playlist ID can't be blank."))
-        timestamped_print(f"Playlist ID can't be blank.")
-
-def change_randomqueue():
-    global playlist_info
-    current_time = selected_time.get().split("(")[0].rstrip(" ") 
-
-    schedule_playlists.setdefault(current_time, {})
-    schedule_playlists[current_time]["randomqueue"] = randomqueue_var.get() 
-    save_schedule_playlists()
-    playliststatus_text.set(_(""))
-    randomqueue_status = 'Enabled' if schedule_playlists[current_time]["randomqueue"] else 'Disabled'
-    timestamped_print(f"Random queue for {current_time} changed to {randomqueue_status}")
-    refresh_playlist_gui(current_time)
-    spotify_main()
-
-def remove_playlist(user_input=None):
-    global schedule_playlists
-    current_time = selected_time.get().split("(")[0].rstrip(" ")
-    if user_input==None:
-        user_input = current_time  # Selected time
-    if user_input in schedule_playlists:
-        del schedule_playlists[user_input]
-        save_schedule_playlists()
-        timestamped_print(f"Playlist for {user_input} has been removed.")
-
-        refresh_playlist_gui(current_time)
-        spotify_main()
-    else:
-        timestamped_print(f"No playlist found for {user_input}.")
-
-# Add a dropdown list at the top
-time_selection_frame = ttk.Frame(playlist_frame)
-time_selection_frame.pack(fill="x", padx=10, pady=(5,0))
-
-time_label = ttk.Label(time_selection_frame, text=_("Select time slot:"))
-time_label.pack(side="left", padx=5)
-
-time_dropdown = ttk.Combobox(time_selection_frame, textvariable=selected_time, state="readonly", values=schedule, width=80, height=20)
-time_dropdown.pack(side="left")
-time_dropdown.bind("<<ComboboxSelected>>", update_view_for_time)
-
-# Set default as selected time
-if schedule:
-    selected_time.set(schedule[0])
-
 def get_spotify_playlist(id=None):
     if not id:
         return None
@@ -1532,171 +2131,12 @@ def get_playlist_info(id=None):
 
     return playlist_info
 
-
-# Playlist container
-playlist_info_frame = ttk.Frame(playlist_frame)
-playlist_info_frame.pack(fill="x", padx=10, pady=10)
-
-# img
-playlist_image_label = ttk.Label(playlist_info_frame)
-playlist_image_label.grid(row=0, column=0, rowspan=3, sticky="nw")
-
-# name
-playlist_label = ttk.Label(playlist_info_frame, text=_("Playlist")+":")
-playlist_label.grid(row=0, column=1, padx=5, sticky="nw")
-
-# id/url
-playlist_entry_label = ttk.Label(playlist_info_frame, text=_("Playlist ID or link:"))
-playlist_entry_label.grid(row=1, column=1, padx=5, sticky="w")
-
-playlist_entry = ttk.Entry(playlist_info_frame, width=75)
-playlist_entry.grid(row=1, column=1, padx=125)
-
-playliststatus_text = tk.StringVar()
-playliststatus_text.set("")
-
-settingsstatus = ttk.Label(playlist_info_frame, textvariable=playliststatus_text, wraplength=500, anchor="w")
-settingsstatus.grid(row=3, column=1, columnspan=2)
-
-# Container for buttons
-buttons_frame = ttk.Frame(playlist_info_frame)
-buttons_frame.grid(row=2, column=1, columnspan=2)
-
-# Set Playlist button
-change_playlist_btn = ttk.Button(buttons_frame, text=_("Set Playlist"), command=change_playlist)
-change_playlist_btn.pack(side="left", padx=5)
-
-# Remove Playlist button
-remove_playlist_btn = ttk.Button(buttons_frame, text=_("Remove Playlist"), command=remove_playlist)
-remove_playlist_btn.pack(side="left", padx=5)
-
-# Random queue checkbox
-randomqueue_var = tk.BooleanVar()
-randomqueue_checkbox = ttk.Checkbutton(buttons_frame, text=_("Random queue"), variable=randomqueue_var, command=change_randomqueue, state="disabled")
-randomqueue_checkbox.pack(side="left", padx=5)
-
 def extract_playlist_id(url):
     try:
         pattern = r"playlist/(\w+)"
         return re.search(pattern, url).group(1)
     except AttributeError:
         return None
-
-
-
-# Container for table and scrollbar
-table_frame = ttk.Frame(playlist_frame)
-table_frame.pack(fill="both", expand=True, padx=10, pady=5)
-
-# Playlist table
-columns = ("name", "id")
-playlist_table = ttk.Treeview(table_frame, columns=columns, show="headings", height=10)
-playlist_table.heading("name", text=_("Name"))
-playlist_table.heading("id", text="ID")
-playlist_table.pack(side="left", fill="both", expand=True)
-
-# Scrollbar
-scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=playlist_table.yview)
-playlist_table.configure(yscrollcommand=scrollbar.set)
-scrollbar.pack(side="right", fill="y")
-
-username=""
-user_id=None
-def fetch_user_playlists():
-    global username, user_id
-    playlists = []
-    offset = 0
-    limit = 50
-    
-    while True:
-        try:
-            response = sp.current_user_playlists(limit=limit, offset=offset)
-            total=response['total']
-            playlists.extend(response['items'])
-            if len(response['items']) < limit:
-                break
-            offset += limit
-        except Exception:
-            break
-    try:
-        user = sp.current_user()
-        display_name=""
-        email=""
-        if "display_name" in user:
-            display_name=user['display_name']
-        if "email" in user:
-            email=f"({user['email']})"
-        if "id" in user:
-            user_id=user['id']
-        if display_name or email:
-            username=(f"{_('Logged in as')}: {display_name} {email}")
-    except Exception as e:
-        pass
-    try:
-        playlist_table.delete(*playlist_table.get_children())  
-        if playlists:
-            for playlist in playlists:
-                if playlist: 
-                    playlist_name = playlist['name']
-                    playlist_id = playlist['id']
-                    playlist_table.insert("", "end", values=(playlist_name, playlist_id))
-            playlistsvar.set(f"{_('fetched_playlists', length=len(playlists), total=total, date=datetime.now().strftime('%H:%M:%S'))}")
-    except Exception as e:
-        playlistsvar.set(f"{_('Error fetching playlists.', date=datetime.now().strftime('%H:%M:%S'))}")
-        timestamped_print(f"Error downloading user playlists: {error(e)}")
-
-# Select playlist from list
-def select_playlist(event):
-    try:
-        selected_item = playlist_table.focus()  # selected item
-        if not selected_item:
-            return
-        playlist_values = playlist_table.item(selected_item, "values")
-        playlist_id = playlist_values[1]  # column with id
-        playlist_entry.delete(0, tk.END)  # clear input
-        playlist_entry.insert(0, playlist_id)  # put id into input
-    except Exception as e:
-        timestamped_print(f"Error selecting playlist: {error(e)}")
-
-# bind click
-playlist_table.bind("<ButtonRelease-1>", select_playlist)
-
-# load playlist button
-load_playlists_btn = ttk.Button(playlist_frame, text=_("Refresh Playlists"), command=fetch_user_playlists)
-load_playlists_btn.pack(side='left', pady=10, padx=(10,5))
-
-playlistsvar = tk.StringVar()
-playlistsvar.set("")
-
-# Checklist label
-playlists_label = ttk.Label(playlist_frame, textvariable=playlistsvar, font=("Arial", 10))
-playlists_label.pack(side='left', pady=10)
-
-def display_playlist_info(id):
-    playlist_info = get_playlist_info(id)
-    warning=""
-    if "scheduler_warning" in playlist_info:
-        warning=f"\n\n{_("Title & Random Queue not available due to API limitations for Spotify's curated playlists.")}"
-
-    playlist_label.config(text=f"{_('Playlist')}: {playlist_info['name']}\n{_('Owner')}: {playlist_info['owner']}{warning}")
-
-    if playlist_info["image_url"]:
-        response = requests.get(playlist_info["image_url"], timeout=5)
-        if response.status_code == 200:
-            img_data = BytesIO(response.content)
-            img = Image.open(img_data)
-        else:
-            img = Image.new("RGB", (150, 150), "lightgrey")
-    else:
-        img = Image.new("RGB", (150, 150), "lightgrey")
-
-    img = img.resize((150, 150))
-    playlist_img = ImageTk.PhotoImage(img)
-
-    playlist_image_label.config(image=playlist_img)
-    playlist_image_label.image = playlist_img
-
-
 
 # now playing label
 now_playing_label = ttk.Label(now_playing_frame, text="", font=("Arial", 12))
@@ -1723,11 +2163,6 @@ def checklist():
                     else:
                         volume = _("Volume Increase", volume=volume)
                     break
-        PLAYLIST_ID=get_value_for_schedule(key="default",value="playlist")
-        if PLAYLIST_ID:
-            playlist = _("Playlist Set")
-        else:
-            playlist = _("Playlist Missing")
         if spotify_button_check():
             if os.name == 'nt':
                 proces = (_("Spotify Is Turned Off")+"\n")
@@ -1748,7 +2183,7 @@ def checklist():
                     except Exception:
                         pass
         
-        checklistvar.set(_("Checklist", process=proces, device=found_device, volume=volume, playlist=playlist))
+        checklistvar.set(_("Checklist", process=proces, device=found_device, volume=volume))
 
     except Exception as ex:
         timestamped_print(f"Checklist error: {error(ex)}")
@@ -1914,66 +2349,78 @@ def killswitch(reason=None):
         if processes>0:
             timestamped_print(f"Killed {processes} Spotify process(es). Reason: {reason}")
 
-last_endtime=None
-last_delay=None
-closest_start_time=None
-earliest_start_time=None
-empty_schedule=None
-def is_within_schedule():
-    match=False
-    global last_schedule, last_endtime, closest_start_time, last_delay, empty_schedule, earliest_start_time, last_loaded_schedule
-    last_schedule=''
-    try:
-        with open(SCHEDULE_FILE, "r+") as file:
-            lines = file.readlines()
-            now = datetime.now().time()
-            closest_start_time = None
-            earliest_start_time=None
-            last_endtime=None
-            empty_schedule=True
-            for line in lines:
-                if re.match(r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?-([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$", line.strip()):
-                    empty_schedule=False
-                    start_str, end_str = line.strip().split("-")
-                    start_time = datetime.strptime(start_str, "%H:%M:%S" if ":" in start_str and start_str.count(":") == 2 else "%H:%M").time()
-                    end_time = datetime.strptime(end_str, "%H:%M:%S" if ":" in end_str and end_str.count(":") == 2 else "%H:%M").time()
-                    if start_time <= end_time:
-                        if start_time <= now <= end_time and (not config['WEEKDAYS_ONLY'] or datetime.today().weekday() < 5):
-                            last_schedule=line
-                            match=line.strip()
-                            if last_endtime is None or last_endtime<datetime.combine(datetime.now(), end_time):
-                                last_endtime=datetime.combine(datetime.now(), end_time)
-                    else:  # Handle overnight schedules
-                        if (start_time <= now or now <= end_time) and (not config['WEEKDAYS_ONLY'] or datetime.today().weekday() < 5):
-                            last_schedule=line
-                            match = line.strip()
-                            if last_endtime is None or last_endtime < datetime.combine(datetime.now(), end_time):
-                                if start_time < now:
-                                    last_endtime = datetime.combine(datetime.now(), end_time) + timedelta(days=1)
-                                else:
-                                    last_endtime = datetime.combine(datetime.now(), end_time)
+last_endtime = None
+last_delay = None
+closest_start_time = None
+earliest_start_time = None
+empty_schedule = None
 
-                    if start_time > now and (closest_start_time is None or start_time < closest_start_time):
-                        closest_start_time = start_time
-                    if earliest_start_time is None or start_time < earliest_start_time:
-                        earliest_start_time = start_time
-            if last_endtime:
-                last_delay=last_endtime
-            if match:
-                closest_start_time=None
-            if not closest_start_time:
-                closest_start_time=earliest_start_time
-            if last_loaded_schedule!=lines:
-                try:
-                    load_schedule_to_table(False)
-                except Exception:
-                    pass
+def is_within_schedule():
+    global last_schedule, last_endtime, closest_start_time, last_delay, empty_schedule, earliest_start_time
+    last_schedule = ''
+    match = False
+    try:
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        now = datetime.now().time()
+        closest_start_time = None
+        earliest_start_time = None
+        last_endtime = None
+        empty_schedule = True
+
+        with open(NEWSCHEDULE, "r") as f:
+            schedule_data = json.load(f)
+
+        day_schedule = schedule_data.get(today_str, {})
+
+        def parse_start(time_range):
+            start_str = time_range.split("-")[0]
+            fmt = "%H:%M:%S" if start_str.count(":") == 2 else "%H:%M"
+            return datetime.strptime(start_str, fmt).time()
+
+        sorted_entries = sorted(day_schedule.items(), key=lambda x: parse_start(x[0]))
+
+        for time_range, entry_data in sorted_entries:
+            empty_schedule = False
+            start_str, end_str = time_range.split("-")
+            start_time = datetime.strptime(start_str, "%H:%M:%S" if start_str.count(":") == 2 else "%H:%M").time()
+            end_time = datetime.strptime(end_str, "%H:%M:%S" if end_str.count(":") == 2 else "%H:%M").time()
+
+            if start_time <= end_time:
+                if start_time <= now <= end_time and (not config.get('WEEKDAYS_ONLY', False) or datetime.today().weekday() < 5):
+                    last_schedule = time_range
+                    match = time_range
+                    end_dt = datetime.combine(datetime.now(), end_time)
+                    if last_endtime is None or last_endtime < end_dt:
+                        last_endtime = end_dt
+            # else:  # Overnight
+            #     if (start_time <= now or now <= end_time) and (not config.get('WEEKDAYS_ONLY', False) or datetime.today().weekday() < 5):
+            #         last_schedule = time_range
+            #         match = time_range
+            #         if start_time < now:
+            #             last_endtime = datetime.combine(datetime.now(), end_time) + timedelta(days=1)
+            #         else:
+            #             last_endtime = datetime.combine(datetime.now(), end_time)
+
+            # Closest start time
+            if start_time > now and (closest_start_time is None or start_time < closest_start_time):
+                closest_start_time = start_time
+            # Earliest start time of the day
+            if earliest_start_time is None or start_time < earliest_start_time:
+                earliest_start_time = start_time
+
+        if last_endtime:
+            last_delay = last_endtime
+        if match:
+            closest_start_time = None
+
+        return match
+
     except FileNotFoundError:
-        timestamped_print(f"Schedule file does not exist, it will be created now from default.")
-        replace_schedule_with_default()
+        initialize_new_schedule()
+        
     except Exception as e:
         timestamped_print(f"Error during reading schedule: {error(e)}")
-    return match
+        return False
 
 last_playlist=''
 last_randomqueue=None
@@ -2161,13 +2608,15 @@ def main():
     global config, newupdate, sp
     print(f"\n! MIT License - © 2025 Szymon Andrzejewski (https://github.com/sandrzejewskipl/spotify-scheduler/blob/main/LICENSE) !\n")
     print(f"# Spotify Scheduler v{VER} made by Szymon Andrzejewski (https://szymonandrzejewski.pl)")
-    print("# Github repository: https://github.com/sandrzejewskipl/spotify-scheduler/") 
+    print("# Github repository: https://github.com/sandrzejewskipl/spotify-scheduler/")
+    print("# Donation: https://szymonandrzejewski.pl/donate/paypal")
     print(f"# Data is stored in {DATA_DIRECTORY}\n") 
 
     set_up()
     refresh_settings()
     initialize_sp()
-    load_schedule_to_table(False)
+    initialize_new_schedule()
+    refresh_schedule_display()
         
     if os.name == 'nt':
         root.iconbitmap(bundle_path("icon.ico"))
@@ -2179,10 +2628,6 @@ def main():
             timestamped_print(f"Exception during looping Spotify main function. {error(e)}")
             pause_music()
         root.after(2500, loop)  # Loop
-
-    def fetch_playlists_loop():
-        fetch_user_playlists()
-        root.after(90000, fetch_playlists_loop)
 
     def fetch_played_loop():
         fetch_last_played_songs()
@@ -2219,6 +2664,9 @@ def main():
                                         nextplay=f" | {_('Plays in ')}{closest_time_str}"
                                     else:
                                         nextplay=f" | {_('Weekend!')}"
+                            else:
+                                nextplay=f" | {_("That's all for today!")}"
+
                         else:
                             nextplay=f" | Weekend!"
                     except Exception:
@@ -2307,7 +2755,6 @@ def main():
         timestamped_print(f"Failed to check Spotify subscription: {error(e)}")
 
     loop()
-    fetch_playlists_loop()
     fetch_played_loop()
     updatechecker_loop()
     title_loop()

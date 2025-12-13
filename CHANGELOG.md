@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0
+### Added:
+- new "Schedule" tab with a calendar which allows for setting different schedules for different days
+- device picker in "Settings" tab
+
+### Fixed:
+- fixed minor bugs
+
 ## 1.13.2
 ### Fixed:
 - fixed an error "argument of type 'NoneType' is not iterable" during a playlist GUI refresh, when a playlist is not set
