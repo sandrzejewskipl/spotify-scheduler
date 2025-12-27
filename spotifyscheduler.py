@@ -18,14 +18,13 @@ import subprocess
 import platform
 from translations import translations
 import os
-import logging
 from packaging import version
 import locale
 from platformdirs import PlatformDirs
 from tkinter.messagebox import askyesno
 import random
 
-VER="2.0.1"
+VER="2.0.2"
 CONFIG_FILE="config.json"
 NEWSCHEDULE="schedule.json"
 LOG_FILE="output.log"
@@ -616,7 +615,10 @@ def import_playlist():
 
             for idx, track in enumerate(tracks, 1):
                 name = track.get("name", "Unknown")
-                artists = ", ".join(track.get("artists", []))
+                artists_list = track.get("artists") or []
+                artists = ", ".join(a for a in artists_list if isinstance(a, str))
+                if not artists:
+                    artists = "Unknown"
                 listbox.insert(tk.END, f"{idx}. {name} - {artists}")
 
             # Continue button
@@ -1122,8 +1124,9 @@ selected_date.set(datetime.now().strftime("%Y-%m-%d"))
 main_content_frame = ttk.Frame(schedulecombo_frame)
 main_content_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-calendar_left = ttk.Frame(main_content_frame)
-calendar_left.pack(side="left", anchor="n", padx=(0,10))
+calendar_left = ttk.Frame(main_content_frame, width=290)
+calendar_left.pack(side="left", anchor="n", padx=(0,10), fill="y", expand=False)
+calendar_left.pack_propagate(False)
 
 def on_date_selected():
     date_obj = calendar.selection_get()

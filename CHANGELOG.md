@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.2
+### Fixed:
+- calendar widget width on MacOS
+- importing podcasts into playlist
+
 ## 2.0.1
 ### Changed:
 - user playlists are now being cached to speed up opening "Schedule" tab
