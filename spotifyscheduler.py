@@ -28,7 +28,6 @@ VER="2.0.2"
 CONFIG_FILE="config.json"
 NEWSCHEDULE="schedule.json"
 LOG_FILE="output.log"
-SCHEDULE_PLAYLISTS_FILE = "schedule_playlists.json"
 DATA_DIRECTORY = PlatformDirs(appname="spotify-scheduler", appauthor=False, ensure_exists=True).user_data_dir
 
 try:
@@ -1109,9 +1108,9 @@ def is_valid_time_format(time_str):
     time_pattern = r"^([01]?[0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?$"  # Hours: 00-23, Minutes: 00-59
     return re.match(time_pattern, time_str) is not None
 
-def initialize_new_schedule():
+def initialize_new_schedule(force=False):
     """Initialize new schedule file if it doesn't exist"""
-    if not os.path.exists(NEWSCHEDULE):
+    if not os.path.exists(NEWSCHEDULE) or force:
         with open(NEWSCHEDULE, "w") as f:
             json.dump({}, f, indent=4)
         timestamped_print("Initialized new schedule file.")
@@ -2432,6 +2431,13 @@ def is_within_schedule():
 
     except FileNotFoundError:
         initialize_new_schedule()
+    except json.JSONDecodeError as e:
+        timestamped_print(f"Schedule file is corrupted: {error(e)}")
+
+        # backup
+        shutil.copy2(NEWSCHEDULE, NEWSCHEDULE+datetime.now().strftime("_%Y%m%d_%H%M%S"))
+
+        initialize_new_schedule(True)
         
     except Exception as e:
         timestamped_print(f"Error during reading schedule: {error(e)}")

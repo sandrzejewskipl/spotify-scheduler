@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+### Fixed:
+- regenerate schedule file when corrupted
+
 ## 2.0.2
 ### Fixed:
 - calendar widget width on MacOS
