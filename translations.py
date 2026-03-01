@@ -201,6 +201,7 @@ translations = {
         "Schedule saved for": "Harmonogram zapisany dla",
         "That's all for today!": "To wszystko na dziś!",
         "Donation": "Darowizna",
+        "You don't have access to this playlist. You must be the owner or a collaborator.": "Nie masz dostępu do tej playlisty. Musisz być jej właścicielem lub współtwórcą.",
 
 
 

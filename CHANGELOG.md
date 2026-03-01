@@ -1,8 +1,12 @@
 # Changelog
 
-## Unreleased
+## 2.1.0
 ### Fixed:
 - regenerate schedule file when corrupted
+- compatiblity with new Spotify API changes
+
+### Changed:
+- better export playlist's image handling
 
 ## 2.0.2
 ### Fixed:

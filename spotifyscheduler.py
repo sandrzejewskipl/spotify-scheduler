@@ -24,7 +24,7 @@ from platformdirs import PlatformDirs
 from tkinter.messagebox import askyesno
 import random
 
-VER="2.0.2"
+VER="2.1.0"
 CONFIG_FILE="config.json"
 NEWSCHEDULE="schedule.json"
 LOG_FILE="output.log"
@@ -353,19 +353,24 @@ def export_playlist():
                 return
             
             tracks = []
-            limit = 100
+            limit = 50
             offset = 0
 
             while True:
-                results = sp.playlist_items(
-                    playlist_id, 
-                    fields="items(track(uri, name, artists(name))),total",
-                    additional_types=['track'],
-                    limit=limit, 
-                    offset=offset
-                )
+                try:
+                    results = sp.playlist_items(
+                        playlist_id, 
+                        fields="items(item(uri, name, artists(name))),total",
+                        additional_types=['track'],
+                        limit=limit, 
+                        offset=offset
+                    )
+                except Exception as e:
+                    if "403" in str(e):
+                        messagebox.showerror(_("Export Playlist"), _("You don't have access to this playlist. You must be the owner or a collaborator."))
+                        return
                 for item in results['items']:
-                    track = item['track']
+                    track = item['item']
                     if track:
                         tracks.append({
                             "uri": track['uri'],
@@ -381,7 +386,7 @@ def export_playlist():
             try:
                 playlist_data = sp.playlist(playlist_id)
                 playlist_name = playlist_data.get("name", "")
-                total_tracks = playlist_data.get("tracks", {}).get("total", 0)
+                total_tracks = playlist_data.get("items", {}).get("total", 0)
             except Exception:
                 playlist_name = playlist_id
                 total_tracks = 0
@@ -401,11 +406,14 @@ def export_playlist():
                 image_b64 = None
                 try:
                     if playlist_data.get("images"):
-                        image_url = playlist_data["images"][0].get("url")
-                        if image_url:
-                            response = requests.get(image_url, timeout=5)
-                            if response.status_code == 200:
-                                image_b64 = base64.b64encode(response.content).decode("utf-8")
+                        for image in playlist_data["images"]:
+                            if image.get("url"):
+                                response = requests.get(image["url"], timeout=5)
+                                if response.status_code == 200:
+                                    img = Image.open(BytesIO(response.content))
+                                    if img.format == "JPEG":
+                                        image_b64 = base64.b64encode(response.content).decode("utf-8")
+                                        break
                 except Exception as e:
                     image_b64 = None
 
@@ -641,7 +649,7 @@ def import_playlist():
                 # Create playlist and add tracks
                 try:
                     uid = sp.me()['id']
-                    new_playlist = sp.user_playlist_create(user=uid, name=name, public=False, description=f"📥 Imported by Spotify Scheduler v{VER} on {datetime.now()}")
+                    new_playlist = sp.current_user_playlist_create(name=name, public=False, description=f"📥 Imported by Spotify Scheduler v{VER} on {datetime.now()}")
                     uris = [track['uri'] for track in tracks if 'uri' in track]
                     # Spotify API: max 100 tracks per request
                     for i in range(0, len(uris), 100):
@@ -657,7 +665,7 @@ def import_playlist():
                                 if img.format == "JPEG":
                                     sp.playlist_upload_cover_image(new_playlist['id'], str(image_b64))
                                 else:
-                                    timestamped_print("Imported image is not a JPEG. Skipping cover upload.")
+                                    timestamped_print("Imported image is not a JPEG. Skipping cover upload."+f" Detected format: {img.format}")
                             else:
                                 timestamped_print("Imported image exceeds 256 KB. Skipping cover upload.")
                         except Exception as e:
@@ -2469,40 +2477,48 @@ def play_music():
                     else:
                         name=playlist_info['name']
                         tracks = []
-                        limit = 100
+                        limit = 50
                         offset = 0
-
+                        results = None
                         while True:
-                            results = sp.playlist_items(
-                                PLAYLIST_ID, 
-                                fields="items(track(uri)),total", 
-                                additional_types=['track'], 
-                                limit=limit, 
-                                offset=offset
-                            )
-                            tracks.extend([item['track']['uri'] for item in results['items']])
-                            offset += limit
-                            if len(results['items']) < limit:
-                                break
-                        track_uris = [track for track in tracks if ":local:" not in track] # remove local tracks
-                        if not track_uris:
-                            status.set(_("No tracks found in playlist"))
-                            return
-                        random.shuffle(track_uris)
-                        if not user_id:
-                            user_id = sp.me()['id']
-                        temp_playlist = sp.user_playlist_create(user=user_id, name=f"{name} ({_("Random queue")})", description=f"🔀 Generated by Spotify Scheduler v{VER} on {datetime.now()}", public=False)
-                        sp.current_user_unfollow_playlist(temp_playlist['id'])
-                        sp.playlist_add_items(temp_playlist['id'], track_uris[:100])
-                        randomqueuefix_playlist=temp_playlist['id']
-                        sp.start_playback(device_id=target_device["id"], context_uri=f"spotify:playlist:{temp_playlist['id']}")
+                            try:
+                                results = sp.playlist_items(
+                                    PLAYLIST_ID, 
+                                    fields="items(item(uri)),total", 
+                                    additional_types=['track'], 
+                                    limit=limit, 
+                                    offset=offset
+                                )
+                                tracks.extend([item['item']['uri'] for item in results['items']])
+                                offset += limit
+                                if len(results['items']) < limit:
+                                    break
+                            except Exception as e:
+                                if "403" in str(e):
+                                    timestamped_print(f"Random queue error: You don't have access to this playlist. You must be the owner or a collaborator. Playing without random queue.")
+                                    sp.start_playback(device_id=target_device["id"], context_uri=f"spotify:playlist:{PLAYLIST_ID}")
+                                    last_playlist=PLAYLIST_ID
+                                    break
+                        if results:
+                            track_uris = [track for track in tracks if ":local:" not in track] # remove local tracks
+                            if not track_uris:
+                                status.set(_("No tracks found in playlist"))
+                                return
+                            random.shuffle(track_uris)
+                            if not user_id:
+                                user_id = sp.me()['id']
+                            temp_playlist = sp.current_user_playlist_create(name=f"{name} ({_("Random queue")})", description=f"🔀 Generated by Spotify Scheduler v{VER} on {datetime.now()}", public=False)
+                            sp.current_user_unfollow_playlist(temp_playlist['id'])
+                            sp.playlist_add_items(temp_playlist['id'], track_uris[:100])
+                            randomqueuefix_playlist=temp_playlist['id']
+                            sp.start_playback(device_id=target_device["id"], context_uri=f"spotify:playlist:{temp_playlist['id']}")
 
                 else:
                     sp.start_playback(device_id=target_device["id"], context_uri=f"spotify:playlist:{PLAYLIST_ID}")
 
                 last_playlist=PLAYLIST_ID
                 last_randomqueue=randomqueue
-                randomqueue_status = 'Enabled' if (randomqueue and "37i9dQ" not in PLAYLIST_ID) else 'Disabled'
+                randomqueue_status = 'Enabled' if (randomqueue and "37i9dQ" not in PLAYLIST_ID and results) else 'Disabled'
                 string=""
                 if playlist_info:
                     string=f"Playlist: {playlist_info['name']}, Owner: {playlist_info['owner']}"
