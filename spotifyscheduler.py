@@ -24,7 +24,7 @@ from platformdirs import PlatformDirs
 from tkinter.messagebox import askyesno
 import random
 
-VER="2.1.0"
+VER="2.1.1"
 CONFIG_FILE="config.json"
 NEWSCHEDULE="schedule.json"
 LOG_FILE="output.log"
@@ -2794,7 +2794,7 @@ def main():
             error_win.focus_set()
             timestamped_print("Spotify Premium subscription is required to use this application.")
     except Exception as e:
-        timestamped_print(f"Failed to check Spotify subscription: {error(e)}")
+        pass
 
     loop()
     fetch_played_loop()

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.1
+### Changed:
+- spotipy version bump to 2.26.0
+
 ## 2.1.0
 ### Fixed:
 - regenerate schedule file when corrupted
